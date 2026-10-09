@@ -71,12 +71,12 @@ export class Llm {
     return tokens <= g.max_input_tokens ? 'confirm' : 'strong';
   }
 
-  // Approval handshake. First call returns needs_approval with an approval_id; second call passes it back.
   // True only for a remote (paid) API source. A local model is free, so it is never gated.
   isPaid() { const s = this.settings(); return s.provider === 'api' && !isLocalEndpoint(s.base_url); }
 
   // Token guardrails protect paid sources only. Local LLM calls and calls that generate annotations
   // (purpose "annotation") skip the gate entirely; the limits stay editable in Settings.
+  // Approval handshake: the first call returns needs_approval with an approval_id; the second passes it back.
   gate(scope, tokens, { approval_id, send_anyway, purpose } = {}) {
     if (purpose === 'annotation' || !this.isPaid()) return { ok: true, exempt: true };
     const tier = this.tier(tokens);

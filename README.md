@@ -46,7 +46,7 @@ database schema (SQL and NoSQL), so the agent also knows which tables a piece of
 Start the server and open <http://localhost:8787/ui/>. Light and dark themes are supported.
 
 - **Trace:** a Flow-Like style call graph (React + xyflow). Edges animate only for the selected
-  node, so the rest stays still. Depth 1-3, SVG (grouped layers) and CSV export, reset button.
+  node, so the rest stays still. Depth 1-5, SVG (grouped layers) and CSV export, reset button.
 - **Architecture:** counts, languages, layers, entrypoints, hotspots and ADRs.
 - **ERD:** pick a saved connection and its stored schema loads from the index. **Sync up** reads the
   database (read-only), **Generate** uses a *local* LLM to infer relationships and group tables

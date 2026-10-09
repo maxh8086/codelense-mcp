@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { execFile } from 'node:child_process';
 import { z } from 'zod';
 import { ROOT_LABEL, NODE_LABELS, EDGE_TYPES, assertEdge } from './constants.js';
 import { indexRepository, sha256, walk } from './indexer.js';
@@ -142,21 +143,22 @@ export function buildTools() {
     });
 
   add('search_graph', 'Find symbols by name/text (fulltext) and optional label.',
-    { project, query: z.string().optional(), label: z.string().optional(), limit: z.number().int().min(1).max(100).optional() },
+    { project, query: z.string().optional(), label: z.string().optional(), limit: z.number().int().min(1).max(100).optional(), offset: z.number().int().min(0).optional() },
     async (ctx, a) => {
       if (a.label && !NODE_LABELS.includes(a.label)) throw new HttpError(400, `unknown label ${a.label}`);
       const lbl = a.label ? `:${a.label}` : '';
       const lim = a.limit ?? 25;
+      const off = a.offset ?? 0;
       const rows = a.query
         ? await ctx.db.run(
           `CALL db.index.fulltext.queryNodes('code_fulltext_idx', $q) YIELD node AS n, score
            WHERE n.user_id=$u AND n.repo_name=$r ${a.label ? `AND n:${a.label}` : ''}
-           RETURN n.qualified_name AS qualified_name, n.name AS name, labels(n) AS labels, n.file_path AS file_path, n.start_line AS start_line, score ORDER BY score DESC LIMIT toInteger($lim)`,
-          { q: a.query.replace(/[+\-&|!(){}[\]^"~*?:\\/]/g, ' ').trim() + '*', u: ctx.tenant.user_id, r: a.project, lim })
+           RETURN n.qualified_name AS qualified_name, n.name AS name, labels(n) AS labels, n.file_path AS file_path, n.start_line AS start_line, score ORDER BY score DESC SKIP toInteger($off) LIMIT toInteger($lim)`,
+          { q: a.query.replace(/[+\-&|!(){}[\]^"~*?:\\/]/g, ' ').trim() + '*', u: ctx.tenant.user_id, r: a.project, lim, off })
         : await ctx.db.run(
-          `MATCH (n:${ROOT_LABEL}${lbl} {user_id:$u, repo_name:$r}) RETURN n.qualified_name AS qualified_name, n.name AS name, labels(n) AS labels, n.file_path AS file_path, n.start_line AS start_line LIMIT toInteger($lim)`,
-          { u: ctx.tenant.user_id, r: a.project, lim });
-      return { results: rows };
+          `MATCH (n:${ROOT_LABEL}${lbl} {user_id:$u, repo_name:$r}) RETURN n.qualified_name AS qualified_name, n.name AS name, labels(n) AS labels, n.file_path AS file_path, n.start_line AS start_line ORDER BY n.qualified_name SKIP toInteger($off) LIMIT toInteger($lim)`,
+          { u: ctx.tenant.user_id, r: a.project, lim, off });
+      return { results: rows, offset: off, limit: lim, has_more: rows.length === lim };
     });
 
   add('search_code', 'Regex/literal search over the indexed repository files on disk (read-only).',
@@ -212,7 +214,7 @@ export function buildTools() {
       return { node_labels: NODE_LABELS, edge_types: EDGE_TYPES, populated_edge_types: used.map((x) => x.t) };
     });
 
-  add('detect_changes', 'Compare files on disk with the index (sha256) and list added/modified/removed paths. Read-only.', { project },
+  add('detect_changes', 'Compare files on disk with the index (sha256) and list added/modified/removed paths, plus git_dirty (working-tree changes per git, null outside a repo). Read-only.', { project },
     async (ctx, a) => {
       const root = rootOf(ctx, a.project);
       const known = await ctx.db.fileHashes(tenant(ctx, a.project));
@@ -226,7 +228,12 @@ export function buildTools() {
         else if (sha256(await fs.readFile(full, 'utf8')) !== h) modified.push(rel);
       }
       const removed = [...known.keys()].filter((k) => !seen.has(k));
-      return { added, modified, removed, clean: !(added.length || modified.length || removed.length) };
+      // Git-aware: files git reports as changed in the working tree (null when root is not a git repo).
+      const git_dirty = await new Promise((resolve) => {
+        execFile('git', ['status', '--porcelain'], { cwd: root, timeout: 10_000 }, (err, out) =>
+          resolve(err ? null : out.split('\n').filter(Boolean).map((l) => l.slice(3).trim())));
+      });
+      return { added, modified, removed, git_dirty, clean: !(added.length || modified.length || removed.length) };
     });
 
   add('manage_adr', 'Store or read architecture decision records for a project (kept in the codelense store).',
