@@ -252,11 +252,11 @@ export default function App() {
   const [live, setLive] = useState(false);
   const [selected, setSelected] = useState(null);
   const [selEdge, setSelEdge] = useState(null);
-  const [tab, setTab] = useState('Trace');
+  const [tab, setTab] = useState(() => { const t = new URLSearchParams(location.search).get('tab'); return TABS.find((x) => x.toLowerCase() === (t ?? '').toLowerCase()) ?? 'Trace'; });
   const [project, setProject] = useState('sample-project');
   const [repos, setRepos] = useState(DEMO_SYNC);
   useEffect(() => {
-    fetch('/api/v1/sync/status').then((r) => (r.ok ? r.json() : Promise.reject())).then((d) => setRepos(d.projects ?? d)).catch(() => {});
+    fetch('/api/v1/projects').then((r) => (r.ok ? r.json() : Promise.reject())).then((d) => setRepos((d.projects ?? []).map((p) => ({ project: p.name, files: p.files, indexed: p.files, status: p.stale ? 'stale' : 'up to date', last: p.days_since_sync === 0 ? 'today' : `${p.days_since_sync} days ago`, days_since_sync: p.days_since_sync })))).catch(() => {});
   }, []);
   const repoDeleted = (name) => setRepos((rs) => {
     const left = rs.filter((r) => r.project !== name);
@@ -286,6 +286,7 @@ export default function App() {
     return { p: q.get('project'), symbol: q.get('symbol') };
   }, []);
   const loadTrace = () => {
+    if (params.p && !params.symbol) { setProject(params.p); setLive(true); return; }
     if (!params.p || !params.symbol) return;
     setProject(params.p);
     setLoading(true);

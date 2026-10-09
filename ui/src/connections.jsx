@@ -73,7 +73,7 @@ export function ConnectionsPanel() {
   return (
     <div className="panel" style={{ marginBottom: 12 }}>
       <h4>Database connections (read-only)</h4>
-      <p className="hint">Used by the ERD tab. Codelense only runs fixed catalog queries inside read-only sessions, but please still give it a database user with SELECT / catalog rights only. Passwords are stored encrypted and never shown again.</p>
+      <p className="hint">Used by the ERD tab. Codelense only runs fixed catalog queries inside read-only sessions. As per industry best practice and the AI governance lifecycle, we recommend providing read-only credentials only (a database user with SELECT / catalog rights). Passwords are stored encrypted and never shown again.</p>
       {list === null ? <p className="hint">Loading…</p> : list.length === 0 ? <p className="hint">No saved connections yet.</p> : (
         <div className="conn-list">
           {list.map((c) => (

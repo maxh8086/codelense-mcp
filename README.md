@@ -41,6 +41,14 @@ database schema (SQL and NoSQL), so the agent also knows which tables a piece of
 | --- | --- |
 | [![HLD](docs/hld.svg)](docs/hld.svg) | [![LLD](docs/lld.svg)](docs/lld.svg) |
 
+### Screenshots
+
+Live data from this repository's own index.
+
+| Architecture | Sync |
+| --- | --- |
+| [![Architecture tab](docs/ui-architecture.png)](docs/ui-architecture.png) | [![Sync tab](docs/ui-sync.png)](docs/ui-sync.png) |
+
 ## The UI
 
 Start the server and open <http://localhost:8787/ui/>. Light and dark themes are supported.
@@ -93,6 +101,28 @@ codelense under the same project name (the checkout folder slug) that its gatewa
 Run `codelense-client` next to your code. It watches the folder and posts changed files to
 `/api/v1/sync`; each file is purged and rebuilt atomically. Service files for systemd, NSSM
 (Windows) and launchd are in `client/`.
+
+#### Standalone client binaries
+
+No Node install needed. Each binary is a Node single-executable build and must be built on its own
+OS, so CI builds one per platform (`.github/workflows/client-binaries.yml`; pushing a `v*` tag
+attaches them to a GitHub Release, otherwise they are workflow artifacts):
+
+| Platform | Binary |
+| --- | --- |
+| Windows x64 | `codelense-client-win-x64.exe` |
+| macOS Apple Silicon | `codelense-client-macos-arm64` |
+| macOS Intel | `codelense-client-macos-x64` |
+| Linux x64 (generic, glibc) | `codelense-client-linux-x64` |
+| Linux arm64 (glibc) | `codelense-client-linux-arm64` |
+
+```bash
+codelense-client path/to/codelense-client.json
+```
+
+Or build for your own OS with `npm run build:client` (output in `dist-client/`). musl distros such
+as Alpine are not covered; use the Node client there. Only the Windows binary has been verified by
+hand; the macOS and Linux ones are built and smoke-tested by CI.
 
 ## Tools
 

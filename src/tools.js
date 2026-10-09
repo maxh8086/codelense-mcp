@@ -351,7 +351,7 @@ export function buildTools() {
 
   add('erd_list_connections', 'Saved database connections for ERDs (passwords never returned).', {},
     async (ctx) => Object.entries(ctx.store.get(ck(ctx), {})).map(([id, c]) => ({ id, ...publicConnection({ ...c.public, password: c.secret }) })));
-  add('erd_save_connection', 'Save a read-only database connection (kind: postgres|mysql|oracle|odbc|sqlite|mongodb; mongodb is sampled with depth/field limits). Use a database user that only has SELECT/catalog rights. The password is write-only.',
+  add('erd_save_connection', 'Save a read-only database connection (kind: postgres|mysql|oracle|odbc|sqlite|mongodb; mongodb is sampled with depth/field limits). As per industry best practice and the AI governance lifecycle, we recommend providing read-only credentials only (SELECT/catalog rights). The password is write-only.',
     {
       id: z.string().regex(/^[A-Za-z0-9_-]{1,40}$/),
       kind: z.enum(['postgres', 'mysql', 'oracle', 'odbc', 'sqlite', 'mongodb']),
