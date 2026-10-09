@@ -101,3 +101,9 @@ test('store seals and opens secrets', () => {
   assert.notEqual(sealed, 'rg_secret');
   assert.equal(ctx.store.open(sealed), 'rg_secret');
 });
+
+test('trace_path default edge types include CALL_REFERENCE', async () => {
+  const { ctx, calls } = makeCtx();
+  await runTool(ctx, 'trace_path', { project: 'p', qualified_name: 'p.src.a.f', direction: 'in' });
+  assert.match(calls.at(-1).cy, /\[r:[A-Z_|]*CALL_REFERENCE[A-Z_|]*\*/);
+});

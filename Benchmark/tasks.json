@@ -1,0 +1,370 @@
+[
+ {
+  "id": "t1",
+  "name": "Find definition of linkRefs",
+  "graph_file": "t1.txt",
+  "graph_call": {
+   "tool": "search_graph",
+   "args": {
+    "query": "linkRefs",
+    "limit": 5
+   }
+  },
+  "baseline": {
+   "mode": "window",
+   "ctx": 10,
+   "grep": [
+    "linkRefs"
+   ],
+   "paths": [
+    "src/*.js",
+    ":!src/ui"
+   ]
+  }
+ },
+ {
+  "id": "t2",
+  "name": "Callers of indexRepository (depth 1)",
+  "graph_file": "t2.txt",
+  "graph_call": {
+   "tool": "trace_path",
+   "args": {
+    "name": "indexRepository",
+    "direction": "in",
+    "depth": 1
+   }
+  },
+  "baseline": {
+   "mode": "window",
+   "ctx": 10,
+   "grep": [
+    "indexRepository"
+   ],
+   "paths": [
+    "src/*.js",
+    "tests",
+    ":!src/ui"
+   ]
+  }
+ },
+ {
+  "id": "t3",
+  "name": "Impact of changing Db.replaceFile (depth 3)",
+  "graph_file": "t3.txt",
+  "graph_call": {
+   "tool": "trace_path",
+   "args": {
+    "name": "replaceFile",
+    "direction": "in",
+    "depth": 3
+   }
+  },
+  "baseline": {
+   "mode": "window",
+   "ctx": 10,
+   "grep": [
+    "replaceFile",
+    "indexFiles",
+    "indexRepository",
+    "buildTools|createApp"
+   ],
+   "paths": [
+    "src/*.js",
+    "tests",
+    "scripts",
+    ":!src/ui"
+   ]
+  }
+ },
+ {
+  "id": "t4",
+  "name": "Fetch one symbol (linkRefs source)",
+  "graph_file": "t4.txt",
+  "graph_call": {
+   "tool": "get_code_snippet",
+   "args": {
+    "name": "linkRefs"
+   }
+  },
+  "baseline": {
+   "mode": "window",
+   "ctx": 25,
+   "grep": [
+    "function linkRefs"
+   ],
+   "paths": [
+    "src/*.js",
+    ":!src/ui"
+   ]
+  }
+ },
+ {
+  "id": "t5",
+  "name": "Concept search: savings",
+  "graph_file": "t5.txt",
+  "graph_call": {
+   "tool": "search_code",
+   "args": {
+    "pattern": "savings"
+   }
+  },
+  "baseline": {
+   "mode": "window",
+   "ctx": 10,
+   "ignore_case": true,
+   "grep": [
+    "savings"
+   ],
+   "paths": [
+    "src/*.js",
+    "tests",
+    ":!src/ui"
+   ]
+  }
+ },
+ {
+  "id": "t6",
+  "name": "List classes",
+  "graph_file": "t6.txt",
+  "graph_call": {
+   "tool": "query_graph",
+   "args": {
+    "cypher": "MATCH (c:Class {user_id: $user_id, repo_name: $repo_name}) RETURN c.name AS name, c.file_path AS file ORDER BY name"
+   }
+  },
+  "baseline": {
+   "cmd": [
+    "git",
+    "grep",
+    "-n",
+    "-E",
+    "^\\s*(export )?(default )?class ",
+    "--",
+    "src/*.js",
+    ":!src/ui"
+   ]
+  }
+ },
+ {
+  "id": "t7",
+  "name": "Architecture overview",
+  "graph_file": "t7.txt",
+  "graph_call": {
+   "tool": "get_architecture",
+   "args": {}
+  },
+  "baseline": {
+   "mode": "head",
+   "head": 40,
+   "paths": [
+    "src/*.js",
+    ":!src/ui"
+   ]
+  }
+ },
+ {
+  "id": "t8",
+  "name": "What changed (dirty tree)",
+  "graph_file": "t8.txt",
+  "graph_call": {
+   "tool": "detect_changes",
+   "args": {}
+  },
+  "baseline": {
+   "cmd": [
+    "git",
+    "status",
+    "--short"
+   ]
+  }
+ },
+ {
+  "id": "t9",
+  "name": "Find definition of buildTools",
+  "graph_file": "t9.txt",
+  "graph_call": {
+   "tool": "search_graph",
+   "args": {
+    "query": "buildTools",
+    "limit": 5
+   }
+  },
+  "baseline": {
+   "mode": "window",
+   "ctx": 10,
+   "grep": [
+    "buildTools"
+   ],
+   "paths": [
+    "src/*.js",
+    "tests",
+    ":!src/ui"
+   ]
+  }
+ },
+ {
+  "id": "t10",
+  "name": "Callers of walk (depth 2)",
+  "graph_file": "t10.txt",
+  "graph_call": {
+   "tool": "trace_path",
+   "args": {
+    "name": "walk",
+    "direction": "in",
+    "depth": 2
+   }
+  },
+  "baseline": {
+   "mode": "window",
+   "ctx": 10,
+   "grep": [
+    "walk(",
+    "indexFiles|indexRepository"
+   ],
+   "paths": [
+    "src/*.js",
+    "tests",
+    ":!src/ui"
+   ]
+  }
+ },
+ {
+  "id": "t11",
+  "name": "Callees of indexRepository (depth 2)",
+  "graph_file": "t11.txt",
+  "graph_call": {
+   "tool": "trace_path",
+   "args": {
+    "name": "indexRepository",
+    "direction": "out",
+    "depth": 2
+   }
+  },
+  "baseline": {
+   "mode": "window",
+   "ctx": 10,
+   "grep": [
+    "async function indexRepository",
+    "walk(|indexFiles("
+   ],
+   "paths": [
+    "src/*.js",
+    ":!src/ui"
+   ]
+  }
+ },
+ {
+  "id": "t12",
+  "name": "Fetch one symbol (gitGrep source)",
+  "graph_file": "t12.txt",
+  "graph_call": {
+   "tool": "get_code_snippet",
+   "args": {
+    "name": "gitGrep"
+   }
+  },
+  "baseline": {
+   "mode": "window",
+   "ctx": 25,
+   "grep": [
+    "function gitGrep"
+   ],
+   "paths": [
+    "src/*.js",
+    ":!src/ui"
+   ]
+  }
+ },
+ {
+  "id": "t13",
+  "name": "Regex search: exported async functions",
+  "graph_file": "t13.txt",
+  "graph_call": {
+   "tool": "search_code",
+   "args": {
+    "pattern": "export async function"
+   }
+  },
+  "baseline": {
+   "mode": "window",
+   "ctx": 10,
+   "grep": [
+    "export async function"
+   ],
+   "paths": [
+    "src/*.js",
+    "tests",
+    ":!src/ui"
+   ]
+  }
+ },
+ {
+  "id": "t14",
+  "name": "Search with no hits (FIXME_[0-9]{4})",
+  "graph_file": "t14.txt",
+  "graph_call": {
+   "tool": "search_code",
+   "args": {
+    "pattern": "FIXME_[0-9]{4}"
+   }
+  },
+  "baseline": {
+   "mode": "window",
+   "ctx": 10,
+   "grep": [
+    "FIXME_[0-9]{4}"
+   ],
+   "paths": [
+    "src/*.js",
+    "tests",
+    ":!src/ui"
+   ]
+  }
+ },
+ {
+  "id": "t15",
+  "name": "List functions in compact.js",
+  "graph_file": "t15.txt",
+  "graph_call": {
+   "tool": "query_graph",
+   "args": {
+    "cypher": "MATCH (f:Function {user_id: $user_id, repo_name: $repo_name}) WHERE f.file_path = 'src/compact.js' RETURN f.name AS name, f.start_line AS line ORDER BY line"
+   }
+  },
+  "baseline": {
+   "cmd": [
+    "git",
+    "grep",
+    "-n",
+    "-E",
+    "^(export )?(async )?function ",
+    "--",
+    "src/compact.js"
+   ]
+  }
+ },
+ {
+  "id": "t16",
+  "name": "Concept search: tenant",
+  "graph_file": "t16.txt",
+  "graph_call": {
+   "tool": "search_code",
+   "args": {
+    "pattern": "tenant"
+   }
+  },
+  "baseline": {
+   "mode": "window",
+   "ctx": 10,
+   "ignore_case": true,
+   "grep": [
+    "tenant"
+   ],
+   "paths": [
+    "src/*.js",
+    "tests",
+    ":!src/ui"
+   ]
+  }
+ }
+]
