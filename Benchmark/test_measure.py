@@ -38,7 +38,7 @@ class Tasks(unittest.TestCase):
     def test_baselines_nonempty(self):
         tasks = json.loads((Path(measure.HERE) / "tasks.json").read_text(encoding="utf-8"))
         for t in tasks:
-            if t["id"] != "t8":  # git status may legitimately be empty on a clean tree
+            if t["id"] not in ("t8", "t14"):  # t8: clean tree; t14: deliberate no-hit search
                 self.assertTrue(measure.baseline(t["baseline"]).strip(), t["id"])
 
 
