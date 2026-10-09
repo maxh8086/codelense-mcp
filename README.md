@@ -55,7 +55,8 @@ Start the server and open <http://localhost:8787/ui/>. Light and dark themes are
 
 - **Trace:** a Flow-Like style call graph (React + xyflow). Edges animate only for the selected
   node, so the rest stays still. Depth 1-5, SVG (grouped layers) and CSV export, reset button.
-- **Architecture:** counts, languages, layers, entrypoints, hotspots and ADRs.
+- **Architecture:** counts, languages, layers, entrypoints, hotspots and ADRs, plus a **Tokens saved**
+  card (today's estimated saving, calls, with/without-graph bars and a by-tool table; demo data until an agent has made MCP calls).
 - **ERD:** pick a saved connection and its stored schema loads from the index. **Sync up** reads the
   database (read-only), **Generate** uses a *local* LLM to infer relationships and group tables
   (grayed out with a tooltip until a local LLM is configured). Every result is saved to the index
@@ -141,6 +142,14 @@ paid remote API source: asks under 50k tokens run, 50k-100k need approval, above
 confirmation, plus a per-minute call cap, a daily budget and a timeout. A local LLM, and calls that
 generate annotations (`summarize_symbol`), are exempt. All limits are editable in Settings or via
 `set_llm_settings`; the defaults are conservative.
+
+Tokens saved (an estimate): every successful MCP call to `get_code_snippet`, `search_graph`,
+`trace_path` or `get_architecture` records `response` (~4 chars/token of the result) and `baseline`
+(the same estimate for the whole distinct files the result touches, i.e. the files an agent would
+open without the graph; `get_architecture` uses all indexed files). `saved = max(0, baseline -
+response)`. Totals are stored per tool and per day, returned by `get_usage` as
+`savings: {saved, baseline, response, calls, by_tool, history}`, and shown as a "Tokens saved" card
+on the Architecture tab. Failed calls and the admin UI's own REST calls are not counted.
 
 Databases (read-only): `erd_list_connections`, `erd_save_connection`, `erd_delete_connection`,
 `erd_test_connection`, `erd_get_model`, `erd_export`, `erd_ai_generate`, `erd_save_to_index`,

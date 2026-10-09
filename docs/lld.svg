@@ -5,11 +5,11 @@
     <rect x="30" y="60" width="280" height="200" rx="12" fill="#14161b" stroke="#3ddc97"/>
     <text x="170" y="84" text-anchor="middle" fill="#3ddc97" font-weight="700">Entry: src/cli.js</text>
     <text x="50" y="112" fill="#eceef3">serve | --stdio</text>
-    <text x="50" y="136" fill="#eceef3">config.js (.env authoritative)</text>
+    <text x="50" y="136" fill="#eceef3">config.js (.env authoritative, bind 127.0.0.1)</text>
     <text x="50" y="160" fill="#eceef3">server.js (express: /sse, /api/v1, /ui)</text>
     <text x="50" y="184" fill="#eceef3">tools.js (MCP tool registry, zod)</text>
     <text x="50" y="208" fill="#eceef3">llm.js (estimate, approve, budget)</text>
-    <text x="50" y="232" fill="#eceef3">default bind 127.0.0.1</text>
+    <text x="50" y="232" fill="#eceef3">savings.js (tokens-saved meter, MCP calls)</text>
   </g>
   <g>
     <rect x="340" y="60" width="280" height="200" rx="12" fill="#14161b" stroke="#ffa94d"/>

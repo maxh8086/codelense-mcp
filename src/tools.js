@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { ROOT_LABEL, NODE_LABELS, EDGE_TYPES, PRODUCED_EDGE_TYPES, assertEdge } from './constants.js';
 import { indexRepository, sha256, walk } from './indexer.js';
 import { estimateTokens } from './llm.js';
+import { savingsSummary } from './savings.js';
 import { makeEmbedder } from './llm.js';
 import { DEFAULT_SYSTEM_PROMPT, renderPrompt } from './prompt.js';
 import { ERD_SYSTEM_PROMPT, buildPrompt, applyEnrichment } from './erd-ai.js';
@@ -343,7 +344,8 @@ export function buildTools() {
     async (ctx, a) => {
       try { return ctx.llm.save(a); } catch (e) { throw new HttpError(400, e.message); }
     });
-  add('get_usage', 'LLM token usage for today against the daily budget.', {}, async (ctx) => ctx.llm.usage());
+  add('get_usage', 'LLM token usage for today against the daily budget, plus estimated tokens saved by graph tools (savings: saved, baseline, response, calls, by_tool).', {},
+    async (ctx) => ({ ...ctx.llm.usage(), savings: savingsSummary(ctx.store) }));
 
   // ---- ERD: read-only. Connection secrets are sealed server-side and never returned. ----
   const ck = (ctx) => `erd_conns:${ctx.tenant.user_id}`;

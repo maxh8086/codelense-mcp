@@ -57,11 +57,44 @@ function normalizeArch(d) {
   };
 }
 
+const DEMO_SAVINGS = {
+  calls: 24, response: 9200, baseline: 61000, saved: 51800,
+  by_tool: { get_code_snippet: { calls: 10, response: 3100, baseline: 22000, saved: 18900 }, search_graph: { calls: 9, response: 4300, baseline: 27000, saved: 22700 }, trace_path: { calls: 4, response: 1500, baseline: 9000, saved: 7500 }, get_architecture: { calls: 1, response: 300, baseline: 3000, saved: 2700 } },
+  estimate: 'files an agent would open without the graph (~4 chars/token)',
+};
+const fmt = (n) => Number(n || 0).toLocaleString();
+
+// Estimate only: baseline = size/4 of the distinct files each MCP result touches, vs the size of the result.
+function SavingsPanel({ s, live }) {
+  const tools = Object.entries(s.by_tool || {}).sort((x, y) => y[1].saved - x[1].saved);
+  const max = Math.max(1, s.baseline, s.response);
+  return (
+    <div className="panel" style={{ marginTop: 12 }}>
+      <h4>Tokens saved today <small className="muted">(estimate{live ? '' : ', demo data'})</small></h4>
+      <div className="grid">
+        <div><div className="stat">{fmt(s.saved)}</div><small className="muted">saved · {fmt(s.calls)} calls</small></div>
+        <div>
+          <div className="row"><span style={{ width: 120 }}>Without graph</span><span className="barwrap"><div className="bar" style={{ width: `${(s.baseline / max) * 100}%` }} /></span><b>{fmt(s.baseline)}</b></div>
+          <div className="row"><span style={{ width: 120 }}>With graph</span><span className="barwrap"><div className="bar" style={{ width: `${(s.response / max) * 100}%` }} /></span><b>{fmt(s.response)}</b></div>
+        </div>
+      </div>
+      {tools.length > 0 && (
+        <table className="t" style={{ marginTop: 8 }}><thead><tr><th>Tool</th><th>Calls</th><th>Baseline</th><th>Response</th><th>Saved</th></tr></thead>
+          <tbody>{tools.map(([k, t]) => <tr key={k}><td>{k}</td><td>{fmt(t.calls)}</td><td>{fmt(t.baseline)}</td><td>{fmt(t.response)}</td><td>{fmt(t.saved)}</td></tr>)}</tbody></table>
+      )}
+      <small className="muted">Baseline = {s.estimate || 'files an agent would open without the graph'}. Counts agent (MCP) calls only; failed calls are excluded.</small>
+    </div>
+  );
+}
+
 export function ArchitectureTab({ project }) {
   const [a, setA] = useState(DEMO_ARCH);
   const [live, setLive] = useState(false);
+  const [sv, setSv] = useState(DEMO_SAVINGS);
+  const [svLive, setSvLive] = useState(false);
   useEffect(() => {
     api(`/architecture?project=${encodeURIComponent(project)}`).then((d) => { setA(normalizeArch(d)); setLive(true); }).catch(() => { setA(DEMO_ARCH); setLive(false); });
+    api('/usage').then((d) => { if (d.savings) { setSv(d.savings); setSvLive(true); } else throw new Error('none'); }).catch(() => { setSv(DEMO_SAVINGS); setSvLive(false); });
   }, [project]);
   return (
     <div className="tab">
@@ -71,6 +104,7 @@ export function ArchitectureTab({ project }) {
         <div className="panel"><h4>Edges</h4><div className="stat">{a.edges}</div></div>
         <div className="panel"><h4>Data</h4><div className="stat" style={{ fontSize: 16 }}>{live ? 'live' : 'demo'}</div></div>
       </div>
+      <SavingsPanel s={sv} live={svLive} />
       <div className="grid" style={{ marginTop: 12 }}>
         <div className="panel"><h4>Languages (files)</h4><Bars data={a.languages} /></div>
         <div className="panel"><h4>Node labels</h4><Bars data={a.labels} /></div>
