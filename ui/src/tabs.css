@@ -164,6 +164,10 @@ pre.out { background: var(--bg); border: 1px solid var(--line); border-radius: 8
 .folder-list { max-height: 260px; overflow: auto; display: flex; flex-direction: column; gap: 2px; margin: 8px 0; }
 .folder { text-align: left; background: transparent; color: inherit; border: 1px solid transparent; border-radius: 6px; padding: 6px 8px; font: inherit; cursor: pointer; }
 .folder:hover, .folder:focus-visible { border-color: var(--border, #30363d); background: rgba(255,255,255,.04); }
+.addnew { margin-bottom: 12px; }
+.addnew-head { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; font-weight: 600; cursor: pointer; }
+.addnew-head .muted { margin-left: auto; font-weight: 400; }
+.addnew-body { margin-top: 10px; }
 .agent-cmds { margin-top: 10px; font-size: 13px; }
 .agent-cmds summary { cursor: pointer; }
 .agent-cmds .cmd { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; margin: 8px 0; align-items: center; }

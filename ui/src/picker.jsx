@@ -76,7 +76,7 @@ const q = (s) => `"${s.replace(/"/g, '\\"')}"`;
 
 // Ready-to-run commands so Claude Code or Codex can index a repo through the MCP tools.
 // Windows paths such as C:\Users\me\repo are valid inside the quoted prompt as-is.
-export function AgentCommands({ path, name, endpoint }) {
+export function AgentCommands({ path, name, endpoint, open }) {
   const [done, setDone] = useState('');
   const p = path || '/path/to/repo';
   const n = name || 'my-repo';
@@ -89,7 +89,7 @@ export function AgentCommands({ path, name, endpoint }) {
     { id: 'codex-run', label: 'Codex: index this repo', text: `codex exec ${q(prompt)}` },
   ];
   return (
-    <details className="agent-cmds">
+    <details className="agent-cmds" open={open}>
       <summary>Index from Claude Code or Codex</summary>
       <p className="hint">These run the same MCP tools as this page, in any terminal (bash, PowerShell, cmd). Indexing only reads your folder. Paste a full path such as <code>/home/me/app</code> or <code>C:\Users\me\app</code>; if codelense runs in Docker, use the path as the container sees it.</p>
       {items.map((i) => (

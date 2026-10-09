@@ -32,7 +32,7 @@ database schema (SQL and NoSQL), so the agent also knows which tables a piece of
   LLM understand tables, collections and how they relate.
 - **Stays current:** `codelense-client` (chokidar, 500 ms debounce) re-indexes only the files you change.
 - **Scales and isolates:** the graph lives in Neo4j and is partitioned per user and repository.
-- **Token guardrails:** asking an LLM about a flow is estimated first; large asks need approval.
+- **Token guardrails for paid sources:** asks sent to a paid remote API (Claude, Codex or similar) are estimated first, and large asks need approval. Local LLMs and annotation-generating calls are never gated. Limits are editable in Settings.
 - **Works with any MCP client:** stdio for local agents, SSE for remote or shared setups.
 
 ## Architecture
@@ -53,11 +53,12 @@ Start the server and open <http://localhost:8787/ui/>. Light and dark themes are
   (grayed out with a tooltip until a local LLM is configured). Every result is saved to the index
   automatically. **Delete** removes only the saved schema in the codelense index and needs the
   authorization checkbox; your database and repos are never touched.
-- **Sync:** index a folder, force re-sync, delete a project (two guardrails: type the repo name,
+- **Sync:** a collapsible **Add new (Claude | Codex)** banner stays on top of the project table
+  (folder picker or an agent command). Index a folder, force re-sync, delete a project (two guardrails: type the repo name,
   then type `yes, delete my repo`; this clears the index only). Stale projects can be kept for
   3 or 6 more months.
 - **Settings:** read-only database connections (PostgreSQL, MySQL, Oracle, ODBC, SQLite, MongoDB),
-  LLM provider (Local or API) with token guardrails.
+  LLM provider (Local or API) with editable token guardrails (paid sources only, conservative defaults).
 - **Query / Chat:** read-only Cypher and questions answered from the graph.
 
 ## Quick start
@@ -99,9 +100,12 @@ Indexing and graph: `index_repository`, `list_projects`, `index_status`, `snooze
 (read-only, writes return 403), `get_architecture`, `get_graph_schema`, `detect_changes`,
 `manage_adr`, `ingest_traces`, `annotate_element`, `get_annotations`.
 
-LLM (with guardrails): `estimate_cost`, `ask_flow`, `summarize_symbol`, `get_llm_settings`,
-`set_llm_settings`, `get_usage`. Asks under 50k tokens run, 50k-100k need approval, above 100k need a
-strong confirmation. There is also a per-minute call cap, a daily budget and a timeout.
+LLM: `estimate_cost`, `ask_flow`, `summarize_symbol`, `get_llm_settings`, `set_llm_settings`,
+`get_usage`. Most calls arrive through MCP from the Claude or Codex chat. Guardrails apply only to a
+paid remote API source: asks under 50k tokens run, 50k-100k need approval, above 100k need a strong
+confirmation, plus a per-minute call cap, a daily budget and a timeout. A local LLM, and calls that
+generate annotations (`summarize_symbol`), are exempt. All limits are editable in Settings or via
+`set_llm_settings`; the defaults are conservative.
 
 Databases (read-only): `erd_list_connections`, `erd_save_connection`, `erd_delete_connection`,
 `erd_test_connection`, `erd_get_model`, `erd_export`, `erd_ai_generate`, `erd_save_to_index`,
@@ -111,8 +115,9 @@ types and flags are stored, never row values.
 
 ## Accuracy: linking is heuristic
 
-Cross-file linking is **not** a full language server. It resolves names against a global symbol
-table built from the syntax trees. Calls that match exactly one target become `CALLS`; ambiguous
+Cross-file linking is **not** a full language server. The "Hybrid LST/LSP" pass is Tree-sitter
+definitions (Pass 1) plus a cross-file linker (Pass 2) that matches import paths and call
+expressions against a global symbol table; no live language servers are run. Calls that match exactly one target become `CALLS`; ambiguous
 ones are recorded as `USAGE`. Dynamic dispatch, reflection, macros and generated code can be
 missed or mislinked. Treat the graph as a fast, useful map rather than ground truth. Relationships
 inferred by name or by a local LLM in an ERD are marked `inferred_name` / `inferred_llm`, not declared.

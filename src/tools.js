@@ -303,7 +303,7 @@ export function buildTools() {
       if (!n) throw new HttpError(404, 'symbol not found');
       const code = await readLines(rootOf(ctx, a.project), n.file_path, n.start_line, n.end_line);
       const prompt = `Summarize this ${n.label ?? 'symbol'} in 2-3 sentences.\n\n${code}`;
-      const gate = ctx.llm.gate(`sum:${a.qualified_name}`, estimateTokens(prompt), a);
+      const gate = ctx.llm.gate(`sum:${a.qualified_name}`, estimateTokens(prompt), { ...a, purpose: 'annotation' });
       if (!gate.ok) return gate;
       return ctx.llm.complete(prompt);
     });

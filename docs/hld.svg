@@ -44,7 +44,7 @@
     <rect x="580" y="320" width="250" height="150" rx="12" fill="#14161b" stroke="#7fe0ff"/>
     <text x="705" y="345" text-anchor="middle" fill="#7fe0ff" font-weight="700">LLM (optional)</text>
     <text x="705" y="378" text-anchor="middle" fill="#eceef3">Local or API endpoint</text>
-    <text x="705" y="404" text-anchor="middle" fill="#eceef3">Guardrails: 50k approve,</text>
+    <text x="705" y="404" text-anchor="middle" fill="#eceef3">Paid-API guardrails: 50k approve,</text>
     <text x="705" y="424" text-anchor="middle" fill="#eceef3">100k strong warning, daily budget</text>
   </g>
   <g stroke="#8a90a0" stroke-width="2" fill="none" marker-end="url(#a)">

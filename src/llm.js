@@ -72,7 +72,13 @@ export class Llm {
   }
 
   // Approval handshake. First call returns needs_approval with an approval_id; second call passes it back.
-  gate(scope, tokens, { approval_id, send_anyway } = {}) {
+  // True only for a remote (paid) API source. A local model is free, so it is never gated.
+  isPaid() { const s = this.settings(); return s.provider === 'api' && !isLocalEndpoint(s.base_url); }
+
+  // Token guardrails protect paid sources only. Local LLM calls and calls that generate annotations
+  // (purpose "annotation") skip the gate entirely; the limits stay editable in Settings.
+  gate(scope, tokens, { approval_id, send_anyway, purpose } = {}) {
+    if (purpose === 'annotation' || !this.isPaid()) return { ok: true, exempt: true };
     const tier = this.tier(tokens);
     const u = this.usage();
     if (tokens > u.remaining) return { ok: false, error: `daily token budget exhausted (${u.tokens_used}/${u.daily_token_budget})`, estimated_tokens: tokens };
@@ -106,7 +112,7 @@ export class Llm {
     const g = s.guardrails;
     const now = Date.now();
     this.calls = this.calls.filter((t) => now - t < 60_000);
-    if (this.calls.length >= g.max_calls_per_minute) throw new Error('rate limit: too many LLM calls this minute');
+    if (this.isPaid() && this.calls.length >= g.max_calls_per_minute) throw new Error('rate limit: too many LLM calls this minute');
     const cacheKey = sha(`${s.model}|${system}|${prompt}`);
     const cache = this.store.get('llm_cache', {});
     if (cache[cacheKey]) return { text: cache[cacheKey], cached: true };

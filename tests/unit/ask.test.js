@@ -20,8 +20,19 @@ test('annotations: save, read back, empty note deletes', async () => {
   assert.deepEqual((await runTool(ctx, 'get_annotations', { project: 'p' })).annotations, {});
 });
 
+test('gate: local LLM and annotation calls are exempt from token guardrails', () => {
+  const { llm } = makeCtx();
+  assert.equal(llm.gate('s', 500_000, {}).exempt, true);
+  llm.save({ provider: 'api', base_url: 'https://api.example.com/v1' });
+  assert.equal(llm.gate('s', 500_000, { purpose: 'annotation' }).exempt, true);
+  assert.equal(llm.gate('s', 500_000, {}).needs_approval, true);
+  llm.save({ provider: 'api', base_url: 'http://192.168.1.5:11434/v1' });
+  assert.equal(llm.gate('s', 500_000, {}).exempt, true);
+});
+
 test('gate: confirm tier needs a matching single-use approval; strong also needs send_anyway', () => {
   const { llm } = makeCtx();
+  llm.save({ provider: 'api', base_url: 'https://api.example.com/v1' });
   const g = llm.gate('s', 60_000, {});
   assert.equal(g.needs_approval, true);
   assert.equal(llm.gate('s', 60_000, { approval_id: g.approval_id }).ok, true);

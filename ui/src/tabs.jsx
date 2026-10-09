@@ -217,6 +217,8 @@ export function SyncTab({ rows, onDeleted }) {
   const [name, setName] = useState('');
   const [auto, setAuto] = useState(true);
   const [pick, setPick] = useState(false);
+  const [openBanner, setOpenBanner] = useState(() => { try { return localStorage.getItem('cl.addnew') !== '0'; } catch { return true; } });
+  const toggleBanner = () => setOpenBanner((v) => { try { localStorage.setItem('cl.addnew', v ? '0' : '1'); } catch { /* ignore */ } return !v; });
   const add =(l) => setLog((x) => [`${new Date().toLocaleTimeString()}  ${l}`, ...x].slice(0, 30));
   const act = async (p, body, label) => {
     add(`${label}…`);
@@ -228,7 +230,29 @@ export function SyncTab({ rows, onDeleted }) {
         onKeep={(p, m) => { snooze(p, m); add(`Keeping ${p} for ${m} more months`); }} />
       {del && <DeleteDialog row={del} onClose={() => setDel(null)}
         onDeleted={(p, demo) => { setDel(null); add(`Deleted index of ${p}${demo ? ' (demo)' : ''}; source repo untouched`); onDeleted(p); }} />}
-      <div className="grid" style={{ gridTemplateColumns: '2fr 1fr' }}>
+      <div className="panel addnew">
+        <button className="addnew-head" aria-expanded={openBanner} onClick={toggleBanner}>
+          <span>{openBanner ? '▾' : '▸'}</span> <strong>Add new</strong> <span className="chipbtn">Claude</span> <span className="chipbtn">Codex</span>
+          <span className="muted" style={{ marginLeft: 'auto' }}>{openBanner ? 'Collapse' : 'Expand'}</span>
+        </button>
+        {openBanner && (
+          <div className="addnew-body">
+            <p className="hint">Indexing runs as MCP tools, so ask Claude Code or Codex to do it. Fill in the folder to get ready-to-paste commands (nothing is indexed from this page).</p>
+            <div className="field">Folder on the server
+              <span className="pathrow">
+                <input type="text" value={path} onChange={(e) => setPath(e.target.value)} placeholder="/workspace/my-repo" />
+                <button className="btn ghost" onClick={() => setPick(true)}>Browse…</button>
+              </span></div>
+            <div className="field">Project name<input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="my-repo" /></div>
+            <AgentCommands path={path} name={name} open />
+            {pick && <FolderPicker value={path} onClose={() => setPick(false)}
+              onPick={(p) => { setPath(p); if (!name) setName(baseName(p)); setPick(false); }} />}
+            <p className="hint">Or run <code>codelense-client</code> next to your code to sync changes automatically.</p>
+            <label className="row"><span>Auto-sync (watch daemon)</span>
+              <input type="checkbox" checked={auto} onChange={(e) => { setAuto(e.target.checked); act('/sync/auto', { enabled: e.target.checked }, `Auto-sync ${e.target.checked ? 'on' : 'off'}`); }} /></label>
+          </div>)}
+      </div>
+      <div className="grid" style={{ gridTemplateColumns: '1fr', marginTop: 12 }}>
         <div className="panel">
           <h4>Projects</h4>
           <table className="t"><thead><tr><th>Project</th><th>Indexed</th><th>Status</th><th>Last sync</th><th /></tr></thead>
@@ -237,23 +261,7 @@ export function SyncTab({ rows, onDeleted }) {
                 <td className={r.status === 'up to date' ? 'ok' : ''}>{r.status}{stale.includes(r) && <span className="chipbtn" style={{ marginLeft: 6 }}>stale</span>}</td><td className="muted">{r.last}</td>
                 <td><button className="btn ghost" onClick={() => act('/sync/force', { project: r.project }, `Force re-index ${r.project}`)}>Force</button>{' '}
                   <button className="btn ghost danger-text" onClick={() => setDel(r)}>Delete</button></td></tr>))}
-              {!rows.length && <tr><td colSpan="5" className="hint">No repositories indexed. Add one on the right.</td></tr>}</tbody></table>
-        </div>
-        <div className="panel">
-          <h4>New repository</h4>
-          <div className="field">Folder on the server
-            <span className="pathrow">
-              <input type="text" value={path} onChange={(e) => setPath(e.target.value)} placeholder="/workspace/my-repo" />
-              <button className="btn ghost" onClick={() => setPick(true)}>Browse…</button>
-            </span></div>
-          <div className="field">Project name<input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="my-repo" /></div>
-          <button className="btn" disabled={!path || !name} onClick={() => act('/sync/force', { path, project: name }, `Index ${name}`)}>Index repository</button>
-          <AgentCommands path={path} name={name} />
-          {pick && <FolderPicker value={path} onClose={() => setPick(false)}
-            onPick={(p) => { setPath(p); if (!name) setName(baseName(p)); setPick(false); }} />}
-          <p className="hint">Or run <code>codelense-client</code> next to your code to sync changes automatically.</p>
-          <label className="row"><span>Auto-sync (watch daemon)</span>
-            <input type="checkbox" checked={auto} onChange={(e) => { setAuto(e.target.checked); act('/sync/auto', { enabled: e.target.checked }, `Auto-sync ${e.target.checked ? 'on' : 'off'}`); }} /></label>
+              {!rows.length && <tr><td colSpan="5" className="hint">No repositories indexed. Use "Add new" above.</td></tr>}</tbody></table>
         </div>
       </div>
       <div className="panel" style={{ marginTop: 12 }}>
@@ -311,7 +319,8 @@ export function SettingsTab() {
         <p className="hint">Database ERD auto-generation only runs against a Local provider, so schema details never leave this machine. Keys are stored encrypted and never read back.</p>
       </div>
       <div className="panel" style={{ marginBottom: 12 }}>
-        <h4>Token guardrails</h4>
+        <h4>Token guardrails (paid sources only)</h4>
+        <p className="hint">These limits apply only to a paid remote API (Claude, Codex or similar). They do not apply to a local LLM, or to Claude/Codex calls that generate annotations. Most calls arrive through MCP from the Claude or Codex chat; the same limits apply there. Defaults are conservative; edit freely.</p>
         {GUARDS.map(([k, label]) => <div className="field" key={k}>{label}
           <input type="number" min="1" value={s.guardrails[k]} onChange={(e) => setG(k, e.target.value)} /></div>)}
       </div>
