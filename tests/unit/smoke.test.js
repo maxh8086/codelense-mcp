@@ -27,7 +27,7 @@ async function serve(ctx) {
   return { base: `http://127.0.0.1:${server.address().port}`, close: () => server.close() };
 }
 
-test('auth: bearer token required on /api when CODELENSE_TOKEN is set', async () => {
+test('auth: bearer token required on /api when SYNAPTREE_TOKEN is set', async () => {
   const { ctx } = makeCtx();
   ctx.cfg.token = 'tok-123';
   const s = await serve(ctx);
@@ -114,4 +114,17 @@ test('export_graph / import_graph round-trip annotations and validate input', as
   const badEdge = { ...dump, edges: [{ from: 'a', to: 'b', type: 'NOT_AN_EDGE' }] };
   await assert.rejects(runTool(target.ctx, 'import_graph', { project: 'q', data: badEdge }));
   assert.ok(calls.length > 0);
+});
+
+test('walk skips .claude worktrees and extractSource survives a bash grammar crash', async () => {
+  const { walk, extractSource } = await import('../../src/indexer.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wk-'));
+  fs.mkdirSync(path.join(dir, '.claude', 'worktrees', 'x'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.claude', 'worktrees', 'x', 'a.js'), 'function dup(){}');
+  fs.writeFileSync(path.join(dir, 'b.js'), 'function real(){}');
+  const seen = [];
+  for await (const f of walk(dir)) seen.push(path.basename(f));
+  assert.deepEqual(seen, ['b.js']);
+  const sh = await extractSource('a.sh', 'run() {\n  echo hi\n}\n');
+  assert.ok(sh.symbols.length >= 1);
 });

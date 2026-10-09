@@ -235,7 +235,7 @@ export function SyncTab({ rows, onDeleted }) {
         {openBanner && (
           <div className="addnew-body">
             <AgentCommands />
-            <p className="hint">Or run <code>codelense-client</code> next to your code to sync changes automatically.</p>
+            <p className="hint">Or run <code>synaptree-client</code> next to your code to sync changes automatically.</p>
             <label className="row"><span>Auto-sync (watch daemon)</span>
               <input type="checkbox" checked={auto} onChange={(e) => { setAuto(e.target.checked); act('/sync/auto', { enabled: e.target.checked }, `Auto-sync ${e.target.checked ? 'on' : 'off'}`); }} /></label>
           </div>)}

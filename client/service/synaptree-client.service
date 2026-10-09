@@ -1,17 +1,17 @@
 # systemd unit. Install:
-#   sudo cp codelense-client.service /etc/systemd/system/
-#   sudo systemctl daemon-reload && sudo systemctl enable --now codelense-client
+#   sudo cp synaptree-client.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now synaptree-client
 # Edit User, WorkingDirectory and the config path first. The client only reads your repo.
 [Unit]
-Description=codelense-client (repo watcher -> codelense-mcp)
+Description=synaptree-client (repo watcher -> synaptree-mcp)
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=CHANGE_ME
-WorkingDirectory=/opt/codelense-mcp
-ExecStart=/usr/bin/node client/codelense-client.js /etc/codelense/codelense-client.json
+WorkingDirectory=/opt/synaptree-mcp
+ExecStart=/usr/bin/node client/synaptree-client.js /etc/synaptree/synaptree-client.json
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true

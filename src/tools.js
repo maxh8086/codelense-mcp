@@ -24,7 +24,7 @@ const tenant = (ctx, project) => ({ user_id: ctx.tenant.user_id, repo_name: proj
 const pkey = (ctx, project) => `${ctx.tenant.user_id}/${project}`;
 const project = z.string().min(1).describe('Project (repo) name');
 
-// Per-project metadata kept in the codelense store, never in the user's repo.
+// Per-project metadata kept in the synaptree store, never in the user's repo.
 const meta = (ctx, p) => ctx.store.get('projects', {})[pkey(ctx, p)] ?? {};
 const setMeta = (ctx, p, patch) => ctx.store.update('projects', (all) => { all[pkey(ctx, p)] = { ...(all[pkey(ctx, p)] ?? {}), ...patch }; return all; });
 
@@ -113,7 +113,7 @@ export function buildTools() {
     });
 
   add('delete_project',
-    'Remove a project from the codelense INDEX only (not git, not the local path). Two stages: call with dry_run:true first to get counts and a delete_token; then the HUMAN must type the repo name and the phrase "yes, delete my repo". Agents must never fill confirm_name or confirm_phrase themselves.',
+    'Remove a project from the synaptree INDEX only (not git, not the local path). Two stages: call with dry_run:true first to get counts and a delete_token; then the HUMAN must type the repo name and the phrase "yes, delete my repo". Agents must never fill confirm_name or confirm_phrase themselves.',
     { project, dry_run: z.boolean().optional(), delete_token: z.string().optional(), confirm_name: z.string().optional(), confirm_phrase: z.string().optional() },
     async (ctx, a) => {
       const t = tenant(ctx, a.project);
@@ -125,7 +125,7 @@ export function buildTools() {
         tokens.set(token, { user: t.user_id, project: a.project, nodes: c, exp: Date.now() + 300_000 });
         return {
           dry_run: true, nodes: c, delete_token: token, expires_in: 300,
-          notice: 'This clears the codelense index only. Your git history and local files are not touched. Re-indexing recreates it.',
+          notice: 'This clears the synaptree index only. Your git history and local files are not touched. Re-indexing recreates it.',
           next: `Type the repo name "${a.project}", then the phrase "${DELETE_PHRASE}".`,
         };
       }
@@ -139,7 +139,7 @@ export function buildTools() {
       ctx.store.update('projects', (all) => { delete all[pkey(ctx, a.project)]; return all; });
       ctx.store.update('annotations', (all) => { delete all[pkey(ctx, a.project)]; return all; });
       ctx.store.audit({ event: 'delete_project', user: t.user_id, project: a.project, nodes: removed });
-      return { deleted: true, nodes_removed: removed, scope: 'codelense index only' };
+      return { deleted: true, nodes_removed: removed, scope: 'synaptree index only' };
     });
 
   add('search_graph', 'Find symbols by name/text (fulltext) and optional label.',
@@ -236,7 +236,7 @@ export function buildTools() {
       return { added, modified, removed, git_dirty, clean: !(added.length || modified.length || removed.length) };
     });
 
-  add('manage_adr', 'Store or read architecture decision records for a project (kept in the codelense store).',
+  add('manage_adr', 'Store or read architecture decision records for a project (kept in the synaptree store).',
     { project, action: z.enum(['list', 'get', 'set', 'delete']), id: z.string().optional(), title: z.string().optional(), content: z.string().optional() },
     async (ctx, a) => {
       const all = ctx.store.get('adrs', {});
@@ -256,7 +256,7 @@ export function buildTools() {
       return { ingested: a.edges.length };
     });
 
-  add('annotate_element', 'Attach a human note to a node or edge (stored in codelense, not in the repo).',
+  add('annotate_element', 'Attach a human note to a node or edge (stored in synaptree, not in the repo).',
     { project, element: z.string(), note: z.string().max(2000) },
     async (ctx, a) => {
       const key = pkey(ctx, a.project);
@@ -273,14 +273,14 @@ export function buildTools() {
       const nodes = await ctx.db.run(`MATCH (n:${ROOT_LABEL} {user_id:$u, repo_name:$r}) RETURN properties(n) AS p, labels(n) AS l`, p);
       const edges = await ctx.db.run(`MATCH (a:${ROOT_LABEL} {user_id:$u, repo_name:$r})-[e]->(b:${ROOT_LABEL} {user_id:$u, repo_name:$r}) RETURN a.qualified_name AS \`from\`, b.qualified_name AS \`to\`, type(e) AS type, e.line AS line, e.ambiguous AS ambiguous`, p);
       return {
-        format: 'codelense-export/1', project: a.project,
+        format: 'synaptree-export/1', project: a.project,
         nodes: nodes.map((x) => { const { user_id, repo_name, embedding, ...rest } = x.p; return { ...rest, label: x.l.find((l) => NODE_LABELS.includes(l)) ?? 'Function' }; }),
         edges, annotations: ctx.store.get('annotations', {})[pkey(ctx, a.project)] ?? {},
       };
     });
 
-  add('import_graph', 'Import a codelense-export/1 document into a project (merges nodes, edges and annotations into the index; never touches the repo).',
-    { project, data: z.object({ format: z.literal('codelense-export/1'), nodes: z.array(z.record(z.any())), edges: z.array(z.record(z.any())), annotations: z.record(z.string()).optional() }) },
+  add('import_graph', 'Import a synaptree-export/1 document into a project (merges nodes, edges and annotations into the index; never touches the repo).',
+    { project, data: z.object({ format: z.literal('synaptree-export/1'), nodes: z.array(z.record(z.any())), edges: z.array(z.record(z.any())), annotations: z.record(z.string()).optional() }) },
     async (ctx, a) => {
       for (const n of a.data.nodes) if (!NODE_LABELS.includes(n.label) || typeof n.qualified_name !== 'string') throw new HttpError(400, 'invalid node in import');
       for (const e of a.data.edges) assertEdge(e.type);
@@ -375,7 +375,7 @@ export function buildTools() {
   add('erd_delete_connection', 'Forget a saved ERD connection (does not touch the database).', { id: z.string() },
     async (ctx, a) => {
       ctx.store.update(ck(ctx), (all) => { delete all[a.id]; return all; });
-      const purged = await ctx.db.purgeProject(tenant(ctx, `db:${a.id}`)); // saved schema snapshot in the codelense index only
+      const purged = await ctx.db.purgeProject(tenant(ctx, `db:${a.id}`)); // saved schema snapshot in the synaptree index only
       return { id: a.id, deleted: true, schema_nodes_removed: purged };
     });
 
@@ -436,7 +436,7 @@ export function buildTools() {
     };
   };
 
-  add('erd_save_to_index', 'Save a database schema (tables/collections, columns, PK/FK, relationships) into the codelense graph so agents can query it. Reads the source DB read-only; writes only to the codelense index. NoSQL is sampled and depth/field-limited (reported as truncated). Set enrich=true to also infer undeclared relationships with the LOCAL LLM.',
+  add('erd_save_to_index', 'Save a database schema (tables/collections, columns, PK/FK, relationships) into the synaptree graph so agents can query it. Reads the source DB read-only; writes only to the synaptree index. NoSQL is sampled and depth/field-limited (reported as truncated). Set enrich=true to also infer undeclared relationships with the LOCAL LLM.',
     { connection_id: z.string(), schemas: z.array(z.string()).max(50).optional(), enrich: z.boolean().optional(), approval_id: z.string().optional(), send_anyway: z.boolean().optional(),
       model: z.object({ tables: z.array(z.any()).max(5000), relationships: z.array(z.any()).max(20000) }).passthrough().optional() },
     async (ctx, a) => {
@@ -463,7 +463,7 @@ export function buildTools() {
     });
   add('list_db_schemas', 'Database schemas saved in the graph (connection id, table count, when saved).', {},
     async (ctx) => (await ctx.db.listSchemas(tenant(ctx, ''))).map((r) => ({ connection_id: r.repo_name.replace(/^db:/, ''), tables: r.tables, saved_at: r.saved_at, source_kind: r.source_kind, nosql: !!r.nosql })));
-  add('delete_db_schema', 'Delete one saved database schema snapshot from the codelense index. Never touches the source database.',
+  add('delete_db_schema', 'Delete one saved database schema snapshot from the synaptree index. Never touches the source database.',
     { connection_id: z.string() },
     async (ctx, a) => {
       await ctx.db.deleteSchema(tenant(ctx, schemaRepo(a.connection_id)));

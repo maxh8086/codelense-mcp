@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" font-family="system-ui,Segoe UI,sans-serif" font-size="13">
   <rect width="960" height="560" fill="#0c0d10"/>
-  <text x="480" y="32" text-anchor="middle" fill="#eceef3" font-size="18" font-weight="700">codelense-mcp - Low-level design</text>
+  <text x="480" y="32" text-anchor="middle" fill="#eceef3" font-size="18" font-weight="700">synaptree-mcp - Low-level design</text>
   <g>
     <rect x="30" y="60" width="280" height="200" rx="12" fill="#14161b" stroke="#3ddc97"/>
     <text x="170" y="84" text-anchor="middle" fill="#3ddc97" font-weight="700">Entry: src/cli.js</text>
@@ -51,7 +51,7 @@
     <text x="520" y="426" fill="#eceef3">stale repo reminder: keep 3 / 6 months</text>
     <text x="520" y="450" fill="#eceef3">POST /api/v1/sync {user_id, repo_name,</text>
     <text x="520" y="470" fill="#eceef3">  file_path, sha256, ast_json}</text>
-    <text x="520" y="494" fill="#eceef3">codelense-client: systemd / NSSM / launchd</text>
+    <text x="520" y="494" fill="#eceef3">synaptree-client: systemd / NSSM / launchd</text>
   </g>
   <g stroke="#8a90a0" stroke-width="2" fill="none">
     <defs><marker id="b" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#8a90a0"/></marker></defs>

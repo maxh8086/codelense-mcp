@@ -9,7 +9,7 @@ async function call(path, opts) {
 const postJson = (path, body) => call(path, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 
 // Note + "ask about this flow" for the element picked in the inspector.
-// Notes live in the codelense index only; the repo is never touched.
+// Notes live in the synaptree index only; the repo is never touched.
 export function AskPanel({ project, element, isNode, live }) {
   const [note, setNote] = useState('');
   const [saved, setSaved] = useState('');
@@ -49,7 +49,7 @@ export function AskPanel({ project, element, isNode, live }) {
   return (
     <div className="ask">
       <div className="ins-sec">Note</div>
-      <textarea rows={2} value={note} maxLength={2000} placeholder="Add context for this element (kept in codelense, not in your repo)" onChange={(e) => setNote(e.target.value)} />
+      <textarea rows={2} value={note} maxLength={2000} placeholder="Add context for this element (kept in synaptree, not in your repo)" onChange={(e) => setNote(e.target.value)} />
       <div className="ins-actions"><button onClick={saveNote} disabled={note === saved}>Save note</button></div>
       {isNode && (
         <>

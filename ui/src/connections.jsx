@@ -73,7 +73,7 @@ export function ConnectionsPanel() {
   return (
     <div className="panel" style={{ marginBottom: 12 }}>
       <h4>Database connections (read-only)</h4>
-      <p className="hint">Used by the ERD tab. Codelense only runs fixed catalog queries inside read-only sessions. As per industry best practice and the AI governance lifecycle, we recommend providing read-only credentials only (a database user with SELECT / catalog rights). Passwords are stored encrypted and never shown again.</p>
+      <p className="hint">Used by the ERD tab. Synaptree only runs fixed catalog queries inside read-only sessions. As per industry best practice and the AI governance lifecycle, we recommend providing read-only credentials only (a database user with SELECT / catalog rights). Passwords are stored encrypted and never shown again.</p>
       {list === null ? <p className="hint">Loading…</p> : list.length === 0 ? <p className="hint">No saved connections yet.</p> : (
         <div className="conn-list">
           {list.map((c) => (
@@ -113,7 +113,7 @@ export function ConnectionsPanel() {
         {text('connection_string', 'or full URI (optional, write-only)', 'mongodb://…')}
         {text('max_depth', 'Max nested depth (1–4, default 2)', '2', 'number')}
         {text('sample_size', 'Documents sampled per collection (1–200, default 50)', '50', 'number')}
-        <p className="hint">NoSQL schemas change constantly, so codelense samples a few documents and records field names and types down to the depth limit only. Treat it as a guide, not an exhaustive schema.</p>
+        <p className="hint">NoSQL schemas change constantly, so synaptree samples a few documents and records field names and types down to the depth limit only. Treat it as a guide, not an exhaustive schema.</p>
       </>}
       {f.kind === 'sqlite' && text('file', 'File (inside the server workspace)', 'data/app.db')}
       {f.kind !== 'sqlite' && <>

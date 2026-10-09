@@ -337,7 +337,7 @@ export default function App() {
   return (
     <div className="app">
       <header>
-        <b className="brand">codelense<span>-mcp</span></b>
+        <b className="brand">synaptree<span>-mcp</span></b>
         <select value={project} onChange={(e) => setProject(e.target.value)}>
           {repos.length === 0 && <option value="">no repositories</option>}
           {repos.map((r) => <option key={r.project} value={r.project}>{r.project}</option>)}
@@ -389,7 +389,7 @@ export default function App() {
         <div className="empty" role="status">
           <b>No trace to show</b>
           <span>{live ? `“${params.symbol}” has no callers or callees in ${project}.` : 'This project has no indexed symbols yet.'}</span>
-          <span className="hint">Index it with <code>index_repository</code> or start codelense-client, then reload.</span>
+          <span className="hint">Index it with <code>index_repository</code> or start synaptree-client, then reload.</span>
         </div>
       ) : tab === 'Trace' ? (
         <>

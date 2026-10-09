@@ -21,8 +21,8 @@ export function AgentCommands({ endpoint }) {
   return (
     <div className="agent-cmds">
       <h5>1. Add the MCP (first time only)</h5>
-      <Cmd id="claude-add" label="Claude Code" text={`claude mcp add --transport sse codelense ${url}`} {...shared} />
-      <Cmd id="codex-add" label="Codex" text="codex mcp add codelense -- node /path/to/codelense-mcp/src/cli.js --stdio" {...shared} />
+      <Cmd id="claude-add" label="Claude Code" text={`claude mcp add --transport sse synaptree ${url}`} {...shared} />
+      <Cmd id="codex-add" label="Codex" text="codex mcp add synaptree -- node /path/to/synaptree-mcp/src/cli.js --stdio" {...shared} />
       <h5>2. Add a new repo</h5>
       <p className="hint">Open Claude Code or Codex inside the repo and say:</p>
       <Cmd id="say" label="Claude Code or Codex (in the repo folder)" text="index this repo" {...shared} />

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// codelense-client: watches a workspace and pushes changed files to a codelense-mcp server.
+// synaptree-client: watches a workspace and pushes changed files to a synaptree-mcp server.
 // Read-only toward the repo: it only reads files and never writes inside workspace_root.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -61,7 +61,7 @@ export function startWatcher(cfg, log = console.error) {
   // Initial scan is on: files that already exist are pushed once at startup (the server skips
   // unchanged ones by sha256), so a fresh client catches up without waiting for an edit.
   // Never upload the client's own config (it holds the auth token) or env files.
-  const neverSync = (p) => /(^|[\\/])(\.env(\..*)?|codelense-client\.json)$/.test(p);
+  const neverSync = (p) => /(^|[\\/])(\.env(\..*)?|synaptree-client\.json)$/.test(p);
   const w = chokidar.watch(cfg.workspace_root, { ignored: [...cfg.ignore_patterns, neverSync], ignoreInitial: false, persistent: true });
   w.on('add', schedule).on('change', schedule);
   w.on('unlink', (abs) => {
@@ -72,9 +72,9 @@ export function startWatcher(cfg, log = console.error) {
   return w;
 }
 
-if (import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}` || process.argv[1]?.endsWith('codelense-client.js')) {
-  const file = process.argv[2] ?? 'codelense-client.json';
+if (import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}` || process.argv[1]?.endsWith('synaptree-client.js')) {
+  const file = process.argv[2] ?? 'synaptree-client.json';
   const cfg = loadClientConfig(file);
   startWatcher(cfg);
-  console.error(`codelense-client watching ${cfg.workspace_root} -> ${cfg.server_endpoint} (${cfg.sync_mode})`);
+  console.error(`synaptree-client watching ${cfg.workspace_root} -> ${cfg.server_endpoint} (${cfg.sync_mode})`);
 }

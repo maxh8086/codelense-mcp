@@ -1,4 +1,4 @@
-// Builds a standalone codelense-client executable for the OS/arch this script runs on
+// Builds a standalone synaptree-client executable for the OS/arch this script runs on
 // (Node single executable application: esbuild bundle + node binary + postject).
 // Cross-OS builds run in CI: .github/workflows/client-binaries.yml.
 // Usage: node scripts/build-client.mjs [outDir]   (default: dist-client)
@@ -10,7 +10,7 @@ import { build } from 'esbuild';
 const out = path.resolve(process.argv[2] ?? 'dist-client');
 const plat = { win32: 'windows', darwin: 'macos', linux: 'linux' }[process.platform] ?? process.platform;
 const arch = process.arch === 'x64' ? 'x64' : process.arch;
-const name = `codelense-client-${plat}-${arch}${process.platform === 'win32' ? '.exe' : ''}`;
+const name = `synaptree-client-${plat}-${arch}${process.platform === 'win32' ? '.exe' : ''}`;
 fs.mkdirSync(out, { recursive: true });
 
 const bundle = path.join(out, 'client.cjs');

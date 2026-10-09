@@ -1,4 +1,4 @@
-# codelense-mcp
+# synaptree-mcp
 
 A multi-tenant **code knowledge graph** for AI agents. It parses a repository with Tree-sitter,
 links symbols across files, stores the result in Neo4j, and exposes it through an
@@ -15,7 +15,7 @@ AI coding agents work blind on large codebases. To answer "what breaks if I chan
 they usually grep, open file after file, and stuff raw source into the context window. That is
 slow, burns tokens, misses relationships that span files, and gets worse as the repo grows.
 
-codelense-mcp indexes the repository once into a graph of symbols (functions, classes, routes,
+synaptree-mcp indexes the repository once into a graph of symbols (functions, classes, routes,
 types, files) and the relationships between them (calls, imports, inheritance, type usage). The
 agent then asks precise structural questions instead of reading code. The same graph can hold your
 database schema (SQL and NoSQL), so the agent also knows which tables a piece of code touches.
@@ -30,7 +30,7 @@ database schema (SQL and NoSQL), so the agent also knows which tables a piece of
   of an unfamiliar repo in a few calls.
 - **Schema-aware agents:** `erd_save_to_index`, `get_db_schema` and `get_table_relationships` let an
   LLM understand tables, collections and how they relate.
-- **Stays current:** `codelense-client` (chokidar, 500 ms debounce) re-indexes only the files you change.
+- **Stays current:** `synaptree-client` (chokidar, 500 ms debounce) re-indexes only the files you change.
 - **Scales and isolates:** the graph lives in Neo4j and is partitioned per user and repository.
 - **Token guardrails for paid sources:** asks sent to a paid remote API (Claude, Codex or similar) are estimated first, and large asks need approval. Local LLMs and annotation-generating calls are never gated. Limits are editable in Settings.
 - **Works with any MCP client:** stdio for local agents, SSE for remote or shared setups.
@@ -59,7 +59,7 @@ Start the server and open <http://localhost:8787/ui/>. Light and dark themes are
 - **ERD:** pick a saved connection and its stored schema loads from the index. **Sync up** reads the
   database (read-only), **Generate** uses a *local* LLM to infer relationships and group tables
   (grayed out with a tooltip until a local LLM is configured). Every result is saved to the index
-  automatically. **Delete** removes only the saved schema in the codelense index and needs the
+  automatically. **Delete** removes only the saved schema in the synaptree index and needs the
   authorization checkbox; your database and repos are never touched.
 - **Sync:** a collapsible **Add new (Claude | Codex)** banner stays on top of the project table
   with two copy-paste sets: add the MCP once, then say `index this repo` in Claude Code or Codex
@@ -73,32 +73,32 @@ Start the server and open <http://localhost:8787/ui/>. Light and dark themes are
 ## Quick start
 
 ```bash
-git clone https://github.com/maxh8086/codelense-mcp && cd codelense-mcp
+git clone https://github.com/maxh8086/synaptree-mcp && cd synaptree-mcp
 npm install
 node scripts/init-env.mjs     # writes .env with a random Neo4j password and ports (never printed)
-docker compose up -d          # bundled Neo4j 5 Community, compose project "codelense"
+docker compose up -d          # bundled Neo4j 5 Community, compose project "synaptree"
 npm start                     # API + UI + SSE on http://127.0.0.1:8787
 ```
 
 Or run everything in Docker: the image binds `0.0.0.0`; outside Docker the default bind is
-`127.0.0.1`. `.env` is authoritative for `NEO4J_*` and `CODELENSE_*` (it overrides the parent
+`127.0.0.1`. `.env` is authoritative for `NEO4J_*` and `SYNAPTREE_*` (it overrides the parent
 environment), and the default Bolt URI is `bolt://127.0.0.1:17687`, not the usual 7687, so it never
 collides with another Neo4j on your machine. Use `NEO4J_URI` to point at Neo4j Enterprise, Aura or Memgraph.
 
 ### Use it from an MCP client
 
 ```bash
-claude mcp add codelense -- node /path/to/codelense-mcp/src/cli.js --stdio
-codex mcp add codelense -- node /path/to/codelense-mcp/src/cli.js --stdio
+claude mcp add synaptree -- node /path/to/synaptree-mcp/src/cli.js --stdio
+codex mcp add synaptree -- node /path/to/synaptree-mcp/src/cli.js --stdio
 ```
 
-SSE clients connect to `http://127.0.0.1:8787/sse`. Set `CODELENSE_TOKEN` to require a bearer token.
+SSE clients connect to `http://127.0.0.1:8787/sse`. Set `SYNAPTREE_TOKEN` to require a bearer token.
 Every tool takes a `project` argument. If you route through TokenFrugal, index your checkout in
-codelense under the same project name (the checkout folder slug) that its gateway injects.
+synaptree under the same project name (the checkout folder slug) that its gateway injects.
 
 ### Keep it in sync
 
-Run `codelense-client` next to your code. It watches the folder and posts changed files to
+Run `synaptree-client` next to your code. It watches the folder and posts changed files to
 `/api/v1/sync`; each file is purged and rebuilt atomically. Service files for systemd, NSSM
 (Windows) and launchd are in `client/`.
 
@@ -110,14 +110,14 @@ attaches them to a GitHub Release, otherwise they are workflow artifacts):
 
 | Platform | Binary |
 | --- | --- |
-| Windows x64 | `codelense-client-win-x64.exe` |
-| macOS Apple Silicon | `codelense-client-macos-arm64` |
-| macOS Intel | `codelense-client-macos-x64` |
-| Linux x64 (generic, glibc) | `codelense-client-linux-x64` |
-| Linux arm64 (glibc) | `codelense-client-linux-arm64` |
+| Windows x64 | `synaptree-client-win-x64.exe` |
+| macOS Apple Silicon | `synaptree-client-macos-arm64` |
+| macOS Intel | `synaptree-client-macos-x64` |
+| Linux x64 (generic, glibc) | `synaptree-client-linux-x64` |
+| Linux arm64 (glibc) | `synaptree-client-linux-arm64` |
 
 ```bash
-codelense-client path/to/codelense-client.json
+synaptree-client path/to/synaptree-client.json
 ```
 
 Or build for your own OS with `npm run build:client` (output in `dist-client/`). musl distros such
@@ -132,7 +132,7 @@ Indexing and graph: `index_repository`, `list_projects`, `index_status`, `snooze
 `manage_adr`, `ingest_traces`, `annotate_element`, `get_annotations`, `export_graph`, `import_graph`.
 
 `export_graph` returns a project's nodes, edges and annotations as portable JSON
-(`codelense-export/1`; embeddings and tenant ids are stripped). `import_graph` loads that JSON into
+(`synaptree-export/1`; embeddings and tenant ids are stripped). `import_graph` loads that JSON into
 any project name, validating labels and edge types first. Use it to back up, move or share an index.
 
 LLM: `estimate_cost`, `ask_flow`, `summarize_symbol`, `get_llm_settings`, `set_llm_settings`,
@@ -167,7 +167,7 @@ Embeddings (optional, `embeddings.url`): at most `embeddings.maxNodes` nodes (de
 and a batch is dropped if the returned vectors do not match the index dimension, so a wrong model
 cannot corrupt the vector index.
 
-Extra languages: set `CODELENSE_GRAMMARS_DIR` to a folder holding `tree-sitter-<name>.wasm` files. A
+Extra languages: set `SYNAPTREE_GRAMMARS_DIR` to a folder holding `tree-sitter-<name>.wasm` files. A
 grammar found there wins over the bundled one; anything missing falls back to the bundled set. A new
 language also needs an entry in `src/langs.js` describing its definition and call node types.
 

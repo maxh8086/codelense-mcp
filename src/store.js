@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 
-// Small JSON-file store for codelense's own metadata (project roots, annotations, ADRs, settings, usage, audit log).
+// Small JSON-file store for synaptree's own metadata (project roots, annotations, ADRs, settings, usage, audit log).
 // It never touches the user's repository or the databases an ERD is read from.
 export class Store {
   constructor(dir) {
@@ -15,7 +15,7 @@ export class Store {
   }
 
   _key() {
-    const env = process.env.CODELENSE_SECRET;
+    const env = process.env.SYNAPTREE_SECRET;
     if (env) return crypto.createHash('sha256').update(env).digest();
     const f = path.join(this.dir, '.secret');
     try { return Buffer.from(fs.readFileSync(f, 'utf8'), 'hex'); } catch { /* create */ }

@@ -207,7 +207,7 @@ export function ErdTab() {
       setSaved(null); setModel(null); setAuthDel(false); setMsg('Saved schema deleted from the index.');
     } catch (e) { setMsg(e.message); } finally { setBusy(false); }
   };
-  // Persists the generated schema in the codelense index (never the source DB) so agents can read it over MCP.
+  // Persists the generated schema in the synaptree index (never the source DB) so agents can read it over MCP.
   // Runs automatically after every Sync up / Generate; returns a short status suffix for the message line.
   const persist = async (m) => {
     try {
@@ -236,10 +236,10 @@ export function ErdTab() {
             Generate</button>
         </div>
         <div className="erd-bar-right">
-          <span className="del-note">Removes only the saved schema in the codelense index; your database and repos are not touched.</span>
+          <span className="del-note">Removes only the saved schema in the synaptree index; your database and repos are not touched.</span>
           <label className="del-auth"><input type="checkbox" checked={authDel} disabled={!saved || busy} onChange={(e) => setAuthDel(e.target.checked)} /> I authorize deletion</label>
           <button className="btn ghost danger" onClick={removeSaved} disabled={busy || !saved || !authDel}
-            title="Delete the saved schema from the codelense index.">Delete</button>
+            title="Delete the saved schema from the synaptree index.">Delete</button>
         </div>
       </div>
       <div className="erd-status">

@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- launchd agent. Install:
-       cp com.codelense.client.plist ~/Library/LaunchAgents/
-       launchctl load ~/Library/LaunchAgents/com.codelense.client.plist
+       cp com.synaptree.client.plist ~/Library/LaunchAgents/
+       launchctl load ~/Library/LaunchAgents/com.synaptree.client.plist
      Edit the paths first. -->
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>com.codelense.client</string>
+  <key>Label</key><string>com.synaptree.client</string>
   <key>ProgramArguments</key>
   <array>
     <string>/usr/local/bin/node</string>
-    <string>/opt/codelense-mcp/client/codelense-client.js</string>
-    <string>/Users/CHANGE_ME/.codelense/codelense-client.json</string>
+    <string>/opt/synaptree-mcp/client/synaptree-client.js</string>
+    <string>/Users/CHANGE_ME/.synaptree/synaptree-client.json</string>
   </array>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
-  <key>StandardErrorPath</key><string>/tmp/codelense-client.log</string>
+  <key>StandardErrorPath</key><string>/tmp/synaptree-client.log</string>
 </dict>
 </plist>

@@ -12,7 +12,7 @@ const send = async (path, body) => {
   return r.json();
 };
 
-// Two-guardrail delete: (1) explain it only clears the codelense index, (2) type the repo name, then the phrase.
+// Two-guardrail delete: (1) explain it only clears the synaptree index, (2) type the repo name, then the phrase.
 export function DeleteDialog({ row, onClose, onDeleted }) {
   const [step, setStep] = useState(1);
   const [info, setInfo] = useState(null);
@@ -49,11 +49,11 @@ export function DeleteDialog({ row, onClose, onDeleted }) {
   return (
     <div className="modal-bg" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="modal" role="dialog" aria-modal="true" aria-label={`Delete ${row.project}`}>
-        <h3>Delete “{row.project}” from codelense?</h3>
+        <h3>Delete “{row.project}” from synaptree?</h3>
         {step === 1 && (<>
           <div className="notice">
             <b>This only removes the index.</b>
-            <p>It clears this repo’s code graph from the codelense database{c ? <>: <b>{c.nodes}</b> nodes, <b>{c.edges}</b> edges, <b>{c.files}</b> files</> : ''}, plus its descriptions, ADRs and embeddings.</p>
+            <p>It clears this repo’s code graph from the synaptree database{c ? <>: <b>{c.nodes}</b> nodes, <b>{c.edges}</b> edges, <b>{c.files}</b> files</> : ''}, plus its descriptions, ADRs and embeddings.</p>
             <p><b>Your source code is not touched.</b> Nothing is deleted from Git, GitHub or the local repo folder{info?.path ? <> (<code>{info.path}</code>)</> : ''}.</p>
             <p>You can index the repo again at any time. Descriptions you added by hand cannot be rebuilt from code.</p>
           </div>
@@ -83,7 +83,7 @@ export function DeleteDialog({ row, onClose, onDeleted }) {
   );
 }
 
-const KEY = 'codelense.keep';
+const KEY = 'synaptree.keep';
 const readKeep = () => { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch { return {}; } };
 
 // Repos not synced for STALE_DAYS and not snoozed. Snoozes are kept by the server; localStorage covers demo mode.

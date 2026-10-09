@@ -25,12 +25,21 @@ export async function* walk(root, ignore = DEFAULT_IGNORE_DIRS) {
   }
 }
 
+const SHELL_LITE = { lite: [
+  { re: /^[ 	]*(?:function[ 	]+)?([A-Za-z_][w.-]*)[ 	]*(?:([ 	]*))?[ 	]*{/m, nameGroup: 1, kind: 'Function', end: "block" },
+] };
+
 export async function extractSource(filePath, source, grammarsDir) {
   const cfg = langForFile(filePath);
   if (!cfg) return null;
   if (cfg.lite) return extractLite(source, cfg);
   if (cfg.resource) return extractResource(source, cfg);
-  const tree = await parseSource(cfg, source, grammarsDir);
+  let tree;
+  try { tree = await parseSource(cfg, source, grammarsDir); } catch (err) {
+    // The bundled bash WASM grammar can crash on some scripts; fall back to pattern extraction so the file still indexes.
+    if (cfg.id === 'bash') return extractLite(source, SHELL_LITE);
+    throw err;
+  }
   return tree ? extractTree(tree, source, cfg) : null;
 }
 

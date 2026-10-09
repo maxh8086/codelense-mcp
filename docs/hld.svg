@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" font-family="system-ui,Segoe UI,sans-serif" font-size="13">
   <rect width="960" height="540" fill="#0c0d10"/>
-  <text x="480" y="32" text-anchor="middle" fill="#eceef3" font-size="18" font-weight="700">codelense-mcp - High-level design</text>
+  <text x="480" y="32" text-anchor="middle" fill="#eceef3" font-size="18" font-weight="700">synaptree-mcp - High-level design</text>
   <g id="clients">
     <rect x="30" y="70" width="200" height="190" rx="12" fill="#14161b" stroke="#4d8dff"/>
     <text x="130" y="95" text-anchor="middle" fill="#4d8dff" font-weight="700">1. Clients</text>
     <text x="130" y="130" text-anchor="middle" fill="#eceef3">AI agents (MCP)</text>
     <text x="130" y="158" text-anchor="middle" fill="#eceef3">Admin web UI</text>
-    <text x="130" y="186" text-anchor="middle" fill="#eceef3">codelense-client</text>
+    <text x="130" y="186" text-anchor="middle" fill="#eceef3">synaptree-client</text>
     <text x="130" y="206" text-anchor="middle" fill="#8a90a0" font-size="11">chokidar, 500 ms debounce</text>
   </g>
   <g id="server">
@@ -55,5 +55,5 @@
     <path d="M405 262 V318"/>
     <path d="M580 395 H522"/>
   </g>
-  <text x="480" y="510" text-anchor="middle" fill="#8a90a0" font-size="12">Read-only by design: only the codelense index is written (graph, annotations, ADRs, saved schemas).</text>
+  <text x="480" y="510" text-anchor="middle" fill="#8a90a0" font-size="12">Read-only by design: only the synaptree index is written (graph, annotations, ADRs, saved schemas).</text>
 </svg>

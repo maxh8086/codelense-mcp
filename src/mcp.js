@@ -14,7 +14,7 @@ export async function runTool(ctx, name, args) {
 }
 
 export function createMcpServer(ctx) {
-  const server = new McpServer({ name: 'codelense-mcp', version: '0.1.0' });
+  const server = new McpServer({ name: 'synaptree-mcp', version: '0.1.0' });
   for (const t of TOOLS) {
     server.registerTool(t.name, { description: t.description, inputSchema: t.schema.shape }, async (args) => {
       try {

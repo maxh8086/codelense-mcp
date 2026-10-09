@@ -72,7 +72,7 @@ export class Db {
   }
 
   // DB-schema snapshot (tables/collections, columns, REFERENCES) under repo_name "db:<connection>".
-  // One transaction: the previous snapshot is replaced, never merged. Writes go to the codelense index only.
+  // One transaction: the previous snapshot is replaced, never merged. Writes go to the synaptree index only.
   async replaceSchema(t, nodes, edges) {
     const s = this.driver.session({ database: this.database });
     try {
@@ -111,7 +111,7 @@ export class Db {
     } finally { await s.close(); }
   }
 
-  // Removes one saved schema snapshot from the codelense index only; the source database is never touched.
+  // Removes one saved schema snapshot from the synaptree index only; the source database is never touched.
   async deleteSchema(t) {
     const s = this.driver.session({ database: this.database });
     try {

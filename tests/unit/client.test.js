@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
-import { loadClientConfig, startWatcher } from '../../client/codelense-client.js';
+import { loadClientConfig, startWatcher } from '../../client/synaptree-client.js';
 
 const tmp = () => fs.mkdtempSync(path.join(os.tmpdir(), 'cl-client-'));
 
@@ -24,7 +24,7 @@ test('loadClientConfig applies defaults and requires endpoint + root', () => {
 test('watcher pushes existing files at startup, never the config/.env, and reports deletes', async () => {
   const dir = tmp();
   fs.writeFileSync(path.join(dir, 'a.js'), 'export const a = 1;');
-  fs.writeFileSync(path.join(dir, 'codelense-client.json'), '{"client_auth_token":"secret"}');
+  fs.writeFileSync(path.join(dir, 'synaptree-client.json'), '{"client_auth_token":"secret"}');
   fs.writeFileSync(path.join(dir, '.env'), 'X=1');
   const got = [];
   const srv = http.createServer((req, res) => {
@@ -43,7 +43,7 @@ test('watcher pushes existing files at startup, never the config/.env, and repor
     assert.equal(a.url, '/api/v1/index-file');
     assert.equal(a.auth, 'Bearer rg_live_t');
     assert.match(a.body.sha256, /^[0-9a-f]{64}$/);
-    assert.ok(!got.some((g) => /codelense-client\.json|\.env/.test(g.body.file_path)), 'config and .env never uploaded');
+    assert.ok(!got.some((g) => /synaptree-client\.json|\.env/.test(g.body.file_path)), 'config and .env never uploaded');
     fs.unlinkSync(path.join(dir, 'a.js'));
     await waitFor(() => got.some((g) => g.body.deleted));
     assert.ok(got.some((g) => g.body.deleted && g.body.file_path === 'a.js'));

@@ -1,17 +1,17 @@
 {
-  "name": "codelense-mcp",
+  "name": "synaptree-mcp",
   "version": "1.0.0",
   "description": "Multi-tenant code knowledge graph on Neo4j with a Tree-sitter indexer, heuristic cross-file linker and an MCP server (stdio + SSE).",
   "type": "module",
   "main": "src/server.js",
   "bin": {
-    "codelense-mcp": "src/cli.js",
-    "codelense-client": "client/codelense-client.js"
+    "synaptree-mcp": "src/cli.js",
+    "synaptree-client": "client/synaptree-client.js"
   },
   "scripts": {
     "start": "node src/cli.js serve",
     "stdio": "node src/cli.js stdio",
-    "client": "node client/codelense-client.js",
+    "client": "node client/synaptree-client.js",
     "test": "node --test tests/unit/*.test.js",
     "test:unit": "node --test tests/unit/*.test.js",
     "init-env": "node scripts/init-env.mjs",

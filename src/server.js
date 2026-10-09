@@ -21,7 +21,7 @@ export function createApp(ctx) {
   const app = express();
   app.use(express.json({ limit: '25mb' }));
 
-  // Optional bearer auth: when CODELENSE_TOKEN is set every API and MCP route requires it.
+  // Optional bearer auth: when SYNAPTREE_TOKEN is set every API and MCP route requires it.
   const guard = (req, res, next) => {
     if (!ctx.cfg.token) return next();
     const h = req.get('authorization') ?? '';
@@ -98,7 +98,7 @@ export function createApp(ctx) {
   api.post('/erd/saved/delete', tool('delete_db_schema'));
   api.post('/erd/saved/table', tool('get_table_relationships'));
 
-  // Push-sync used by codelense-client: pre-parsed AST for one file.
+  // Push-sync used by synaptree-client: pre-parsed AST for one file.
   api.post('/sync', wrap(async (r) => {
     const { user_id, repo_name, file_path, sha256: hash, ast_json } = r.body ?? {};
     if (!repo_name || !file_path || !ast_json) { const e = new Error('repo_name, file_path and ast_json are required'); e.status = 400; throw e; }
@@ -110,7 +110,7 @@ export function createApp(ctx) {
     setMeta(ctx, repo_name, { last_sync: Date.now() });
     return stats;
   }));
-  // Push-sync of raw source (codelense-client default): the server parses; `deleted` purges one file.
+  // Push-sync of raw source (synaptree-client default): the server parses; `deleted` purges one file.
   api.post('/index-file', wrap(async (r) => {
     const { repo_name, file_path, sha256: hash, source, deleted } = r.body ?? {};
     if (!repo_name || !file_path) { const e = new Error('repo_name and file_path are required'); e.status = 400; throw e; }
