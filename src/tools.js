@@ -80,7 +80,7 @@ export function buildTools() {
   const T = [];
   const add = (name, description, shape, handler) => T.push({ name, description, schema: z.object(shape), handler });
 
-  add('index_repository', 'Index (or incrementally refresh) a local repository into the graph. Reads files only; never modifies the repo.',
+  add('index_repository', 'Index (or incrementally refresh) a local repository into the graph. Reads files only; never modifies the repo. Use when the user says "index this repo": pass root_path as the current working directory (absolute) and project as that folder\'s name.',
     { project, root_path: z.string().optional(), force: z.boolean().optional() },
     async (ctx, a) => {
       const root = a.root_path ? path.resolve(a.root_path) : rootOf(ctx, a.project);

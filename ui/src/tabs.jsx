@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import './tabs.css';
 import { DeleteDialog, StaleReminder, useStale } from './repos.jsx';
-import { FolderPicker, AgentCommands, baseName } from './picker.jsx';
+import { AgentCommands } from './picker.jsx';
 import { ConnectionsPanel } from './connections.jsx';
 
 const api = async (path, opts) => {
@@ -213,10 +213,7 @@ export function SyncTab({ rows, onDeleted }) {
   const [log, setLog] = useState([]);
   const [del, setDel] = useState(null);
   const { stale, snooze } = useStale(rows);
-  const [path, setPath] = useState('');
-  const [name, setName] = useState('');
   const [auto, setAuto] = useState(true);
-  const [pick, setPick] = useState(false);
   const [openBanner, setOpenBanner] = useState(() => { try { return localStorage.getItem('cl.addnew') !== '0'; } catch { return true; } });
   const toggleBanner = () => setOpenBanner((v) => { try { localStorage.setItem('cl.addnew', v ? '0' : '1'); } catch { /* ignore */ } return !v; });
   const add =(l) => setLog((x) => [`${new Date().toLocaleTimeString()}  ${l}`, ...x].slice(0, 30));
@@ -237,16 +234,7 @@ export function SyncTab({ rows, onDeleted }) {
         </button>
         {openBanner && (
           <div className="addnew-body">
-            <p className="hint">Indexing runs as MCP tools, so ask Claude Code or Codex to do it. Fill in the folder to get ready-to-paste commands (nothing is indexed from this page).</p>
-            <div className="field">Folder on the server
-              <span className="pathrow">
-                <input type="text" value={path} onChange={(e) => setPath(e.target.value)} placeholder="/workspace/my-repo" />
-                <button className="btn ghost" onClick={() => setPick(true)}>Browse…</button>
-              </span></div>
-            <div className="field">Project name<input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="my-repo" /></div>
-            <AgentCommands path={path} name={name} open />
-            {pick && <FolderPicker value={path} onClose={() => setPick(false)}
-              onPick={(p) => { setPath(p); if (!name) setName(baseName(p)); setPick(false); }} />}
+            <AgentCommands />
             <p className="hint">Or run <code>codelense-client</code> next to your code to sync changes automatically.</p>
             <label className="row"><span>Auto-sync (watch daemon)</span>
               <input type="checkbox" checked={auto} onChange={(e) => { setAuto(e.target.checked); act('/sync/auto', { enabled: e.target.checked }, `Auto-sync ${e.target.checked ? 'on' : 'off'}`); }} /></label>

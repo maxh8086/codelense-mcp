@@ -54,7 +54,8 @@ Start the server and open <http://localhost:8787/ui/>. Light and dark themes are
   automatically. **Delete** removes only the saved schema in the codelense index and needs the
   authorization checkbox; your database and repos are never touched.
 - **Sync:** a collapsible **Add new (Claude | Codex)** banner stays on top of the project table
-  (folder picker or an agent command). Index a folder, force re-sync, delete a project (two guardrails: type the repo name,
+  with two copy-paste sets: add the MCP once, then say `index this repo` in Claude Code or Codex
+  inside any repo. Force re-sync, delete a project (two guardrails: type the repo name,
   then type `yes, delete my repo`; this clears the index only). Stale projects can be kept for
   3 or 6 more months.
 - **Settings:** read-only database connections (PostgreSQL, MySQL, Oracle, ODBC, SQLite, MongoDB),
