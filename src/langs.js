@@ -270,6 +270,25 @@ export const LANGS = {
     exts: ['.r', '.R'],
     lite: [{ re: /^\s*([A-Za-z_.][\w.]*)\s*(?:<-|=)\s*function\s*\(/gm, kind: 'Function', nameGroup: 1, end: 'brace' }],
   },
+  // Terraform / OpenTofu (HCL). No HCL grammar ships in tree-sitter-wasms, so this is
+  // regex "lite" extraction (blocks only, no expression parsing). `nameGroups` are joined
+  // with '.' to match how Terraform addresses things (aws_s3_bucket.logs, var.region).
+  // `refs` feeds the linker: a reference to another block's address becomes a USAGE edge.
+  terraform: {
+    exts: ['.tf', '.tfvars', '.hcl', '.tofu'],
+    lite: [
+      { re: /^\s*resource\s+"([\w-]+)"\s+"([\w-]+)"\s*\{/gm, kind: 'Type', nameGroups: [1, 2], end: 'brace' },
+      { re: /^\s*data\s+"([\w-]+)"\s+"([\w-]+)"\s*\{/gm, kind: 'Type', nameGroups: [1, 2], prefix: 'data', end: 'brace' },
+      { re: /^\s*module\s+"([\w-]+)"\s*\{/gm, kind: 'Class', nameGroups: [1], prefix: 'module', end: 'brace' },
+      { re: /^\s*variable\s+"([\w-]+)"\s*\{/gm, kind: 'Variable', nameGroups: [1], prefix: 'var', end: 'brace' },
+      { re: /^\s*output\s+"([\w-]+)"\s*\{/gm, kind: 'Variable', nameGroups: [1], prefix: 'output', end: 'brace' },
+      { re: /^\s*provider\s+"([\w-]+)"\s*\{/gm, kind: 'Interface', nameGroups: [1], prefix: 'provider', end: 'brace' },
+    ],
+    refs: [
+      { re: /\b(var|local|module|data\.[\w-]+)\.([\w-]+)/g, address: 'prefix.name' },
+      { re: /\b([a-z][a-z0-9]*_[\w-]+)\.([\w-]+)\b/g, address: 'type.name' },
+    ],
+  },
   markdown: { exts: ['.md', '.markdown'] },
 };
 

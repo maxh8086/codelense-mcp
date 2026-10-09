@@ -1,0 +1,8 @@
+{
+  "server_endpoint": "http://127.0.0.1:8787",
+  "client_auth_token": "rg_live_replace_me",
+  "sync_mode": "auto",
+  "workspace_root": "/path/to/your/repo",
+  "repo_name": "my-repo",
+  "ignore_patterns": ["**/node_modules/**", "**/.git/**", "**/dist/**", "**/build/**", "**/.venv/**", "**/__pycache__/**"]
+}

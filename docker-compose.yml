@@ -1,0 +1,44 @@
+name: codelense
+
+services:
+  neo4j:
+    image: neo4j:5-community
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: ${NEO4J_AUTH:?run npm run init-env first}
+    ports:
+      - "127.0.0.1:${NEO4J_HTTP_PORT:-17474}:7474"
+      - "127.0.0.1:${NEO4J_BOLT_PORT:-17687}:7687"
+    volumes:
+      - codelense_neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "cypher-shell -u neo4j -p \"$${NEO4J_AUTH#neo4j/}\" 'RETURN 1' || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+
+  codelense:
+    build: .
+    image: maxh8086/codelense-mcp:latest
+    restart: unless-stopped
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    environment:
+      NEO4J_URI: ${NEO4J_URI:-bolt://neo4j:7687}
+      NEO4J_AUTH: ${NEO4J_AUTH}
+      CODELENSE_USER_ID: ${CODELENSE_USER_ID:-default}
+      CODELENSE_TOKEN: ${CODELENSE_TOKEN:-}
+      HOST: 0.0.0.0
+      CODELENSE_WORKSPACE_ROOT: /workspace
+      CODELENSE_DATA_DIR: /app/data
+    ports:
+      - "127.0.0.1:${CODELENSE_PORT:-8787}:8787"
+    volumes:
+      - codelense_data:/app/data
+      # Read-only: the container can browse and read your code but never write to it.
+      - ${WORKSPACE_DIR:-./}:/workspace:ro
+
+volumes:
+  codelense_neo4j_data:
+  codelense_data:

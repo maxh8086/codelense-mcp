@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>codelense-mcp</title>
+<style>
+  :root {
+    --bg:#0f1419; --panel:#161c24; --line:#232c38; --text:#e6edf3; --muted:#8b98a8; --accent:#4cc2ff;
+    --ok:#3fb950; --warn:#f2cc60; --bad:#ff7b72;
+    --Function:#4cc2ff; --Method:#7ee787; --Class:#d2a8ff; --Interface:#ffa657; --File:#6e7b8b;
+    --Route:#ff7b72; --Module:#f2cc60; --Type:#79c0ff; --Enum:#ffab70; --Package:#a5d6ff; --Folder:#8b949e;
+    --Project:#ffffff; --Resource:#56d4dd;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f6f8fa; --panel:#fff; --line:#d8dee4; --text:#1f2328; --muted:#59636e; --accent:#0969da; --Project:#1f2328; }
+  }
+  :root[data-theme="dark"] { --bg:#0f1419; --panel:#161c24; --line:#232c38; --text:#e6edf3; --muted:#8b98a8; --accent:#4cc2ff; --Project:#ffffff; }
+  :root[data-theme="light"] { --bg:#f6f8fa; --panel:#fff; --line:#d8dee4; --text:#1f2328; --muted:#59636e; --accent:#0969da; --Project:#1f2328; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.45 system-ui,-apple-system,Segoe UI,sans-serif; background:var(--bg); color:var(--text); height:100vh; display:flex; flex-direction:column; }
+  header { display:flex; align-items:center; gap:12px; padding:8px 16px; border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap; }
+  header h1 { font-size:15px; margin:0; }
+  header h1 span { color:var(--accent); }
+  .pill { font-size:12px; padding:2px 8px; border:1px solid var(--line); border-radius:99px; color:var(--muted); white-space:nowrap; }
+  .pill.ok::before { content:""; display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--ok); margin-right:6px; }
+  .pill.demo { color:var(--warn); border-color:#f2cc6066; }
+  select, input, textarea, button { background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:6px; padding:6px 10px; font:inherit; }
+  button { cursor:pointer; }
+  button:hover { border-color:var(--accent); }
+  button.primary { background:var(--accent); color:#04121c; border-color:var(--accent); font-weight:600; }
+  button:disabled { opacity:.5; cursor:default; }
+  .grow { flex:1; }
+  nav { display:flex; gap:2px; padding:0 16px; border-bottom:1px solid var(--line); background:var(--panel); overflow-x:auto; }
+  nav button { border:0; border-bottom:2px solid transparent; border-radius:0; background:none; padding:9px 14px; color:var(--muted); white-space:nowrap; }
+  nav button.on { color:var(--text); border-bottom-color:var(--accent); }
+  .view { display:none; flex:1; min-height:0; }
+  .view.on { display:grid; }
+  #v-graph { grid-template-columns:260px 1fr 330px; }
+  aside { background:var(--panel); border-right:1px solid var(--line); overflow:auto; padding:12px; min-width:0; }
+  aside.right { border-right:0; border-left:1px solid var(--line); }
+  h2 { font-size:11px; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin:14px 0 8px; }
+  h2:first-child { margin-top:0; }
+  .stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .stat { border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+  .stat b { display:block; font-size:18px; }
+  .stat small { color:var(--muted); }
+  label.row { display:flex; align-items:center; gap:8px; padding:4px 6px; border-radius:6px; cursor:pointer; }
+  label.row:hover { background:var(--bg); }
+  label.row input { margin:0; padding:0; }
+  .dot { width:10px; height:10px; border-radius:50%; flex:none; display:inline-block; }
+  .row .n { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row .c { color:var(--muted); font-size:12px; }
+  .tag { font-size:10px; padding:0 5px; border:1px solid var(--line); border-radius:4px; color:var(--muted); }
+  .tag.res { color:var(--warn); }
+  #stage { position:relative; min-width:0; min-height:420px; }
+  canvas { width:100%; height:100%; display:block; }
+  .hint { position:absolute; left:12px; bottom:10px; color:var(--muted); font-size:12px; }
+  .kv { display:grid; grid-template-columns:80px 1fr; gap:4px 8px; font-size:13px; }
+  .kv div:nth-child(odd) { color:var(--muted); }
+  .kv div { word-break:break-all; }
+  pre { background:var(--bg); border:1px solid var(--line); border-radius:8px; padding:10px; overflow:auto; font:12px/1.5 ui-monospace,Consolas,monospace; margin:8px 0 0; white-space:pre-wrap; }
+  .edge { font-size:12px; padding:3px 0; color:var(--muted); }
+  .edge b { color:var(--text); font-weight:500; cursor:pointer; }
+  .risk { display:inline-block; padding:1px 8px; border-radius:99px; font-size:12px; font-weight:600; }
+  .risk.low { background:#3fb95033; color:var(--ok); } .risk.medium { background:#f2cc6033; color:var(--warn); } .risk.high { background:#ff7b7233; color:var(--bad); }
+  .page { padding:20px; overflow:auto; max-width:900px; width:100%; margin:0 auto; }
+  .card { background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:16px; margin-bottom:16px; }
+  .card h3 { margin:0 0 10px; font-size:14px; }
+  .form { display:grid; grid-template-columns:150px 1fr; gap:10px 12px; align-items:center; }
+  .form label { color:var(--muted); font-size:13px; }
+  .form input, .form select, .form textarea { width:100%; }
+  .actions { display:flex; gap:8px; align-items:center; margin-top:14px; flex-wrap:wrap; }
+  .note { color:var(--muted); font-size:12px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); }
+  th { color:var(--muted); font-weight:500; font-size:12px; }
+  .switch { display:flex; align-items:center; gap:10px; }
+  #v-trace, #v-query, #v-chat { grid-template-rows:auto 1fr; }
+  .bar { display:flex; gap:10px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap; }
+  #tracesvg { width:100%; height:100%; display:block; min-height:380px; }
+  #chatlog { overflow:auto; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .msg { max-width:80%; padding:8px 12px; border-radius:10px; border:1px solid var(--line); background:var(--panel); white-space:pre-wrap; }
+  .msg.me { align-self:flex-end; background:var(--accent); color:#04121c; border-color:var(--accent); }
+  .err { color:var(--bad); }
+  @media (max-width:900px) { #v-graph { grid-template-columns:1fr; } #v-graph aside { display:none; } .form { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>codelense<span>-mcp</span></h1>
+  <select id="project" title="Project"></select>
+  <span class="pill" id="tenant" title="Tenant (user_id), taken from the server token">user: …</span>
+  <input id="q" placeholder="Search symbols" size="24">
+  <span class="grow"></span>
+  <span id="mode" class="pill">connecting…</span>
+  <button id="theme" title="Toggle light/dark">◐</button>
+</header>
+<nav id="tabs">
+  <button data-v="graph" class="on">Graph</button>
+  <button data-v="trace">Trace</button>
+  <button data-v="arch">Architecture</button>
+  <button data-v="query">Query</button>
+  <button data-v="chat">Chat</button>
+  <button data-v="sync">Sync</button>
+  <button data-v="settings">Settings</button>
+</nav>
+
+<div class="view on" id="v-graph">
+  <aside>
+    <h2>Graph</h2>
+    <div class="stats" id="stats"></div>
+    <h2>Node kinds <span class="note">(filter)</span></h2>
+    <div id="kinds"></div>
+    <h2>Edge types <span class="note">(filter)</span></h2>
+    <div id="etypes"></div>
+  </aside>
+  <section id="stage">
+    <canvas id="cv"></canvas>
+    <div class="hint">Drag to move · scroll to zoom · click a node · double-click to trace it</div>
+  </section>
+  <aside class="right">
+    <h2>Selected symbol</h2>
+    <div id="detail" class="note">Click a node in the graph.</div>
+  </aside>
+</div>
+
+<div class="view" id="v-trace">
+  <div class="bar">
+    <span>Symbol</span><b id="tsym">none selected</b>
+    <span>Depth</span><input id="tdepth" type="range" min="1" max="5" value="2" style="width:110px"><b id="tdv">2</b>
+    <select id="tdir"><option value="both">callers + callees</option><option value="in">callers only</option><option value="out">callees only</option></select>
+    <span class="note">Select a symbol on the Graph tab, or search above.</span>
+  </div>
+  <div style="min-height:0;overflow:auto"><svg id="tracesvg"></svg></div>
+</div>
+
+<div class="view" id="v-arch"><div class="page" id="archbody"></div></div>
+
+<div class="view" id="v-query">
+  <div class="bar" style="align-items:flex-start;flex-direction:column;align-items:stretch">
+    <textarea id="cypher" rows="3" spellcheck="false">MATCH (f:Function) WHERE NOT EXISTS { (f)<-[:CALLS]-() } RETURN f.qualified_name LIMIT 25</textarea>
+    <div><button class="primary" id="runq">Run read-only query</button> <span class="note">Writes (MERGE, CREATE, DELETE, SET, CALL) are rejected with 403. Queries are scoped to the active tenant and project.</span></div>
+  </div>
+  <div style="overflow:auto;padding:16px"><pre id="qout">Results appear here.</pre></div>
+</div>
+
+<div class="view" id="v-chat">
+  <div id="chatlog"><div class="msg">Ask about the active project. The server fills in your tenant, so you never type a user id.</div></div>
+  <div class="bar" style="border-top:1px solid var(--line);border-bottom:0">
+    <input id="chatin" class="grow" placeholder="e.g. What calls createOrder?">
+    <button class="primary" id="chatsend">Send</button>
+  </div>
+</div>
+
+<div class="view" id="v-sync"><div class="page">
+  <div class="card">
+    <h3>Auto-tracking</h3>
+    <div class="switch"><input type="checkbox" id="autotrack"><label for="autotrack">Re-index changed files pushed by connected client agents</label></div>
+    <p class="note">Off: agents keep watching but the server ignores their pushes until you turn this on or press Force Sync.</p>
+    <div class="actions"><button class="primary" id="force">Force Sync</button><span id="syncmsg" class="note"></span></div>
+    <p class="note">Force Sync asks every connected agent to re-send the hash of every file; only changed files are re-parsed.</p>
+  </div>
+  <div class="card">
+    <h3>Connected client agents</h3>
+    <table><thead><tr><th>Agent</th><th>Repo</th><th>Status</th><th>Last sync</th><th>Files</th></tr></thead><tbody id="agents"></tbody></table>
+  </div>
+  <div class="card">
+    <h3>Index status</h3>
+    <div class="stats" id="idxstats"></div>
+  </div>
+</div></div>
+
+<div class="view" id="v-settings"><div class="page">
+  <div class="card">
+    <h3>LLM endpoint</h3>
+    <div class="form">
+      <label>Provider</label>
+      <select id="llmprov"><option value="openai-compatible">OpenAI-compatible (OpenAI, vLLM, LM Studio)</option><option value="ollama">Ollama</option><option value="anthropic">Anthropic</option></select>
+      <label>Endpoint URL</label><input id="llmurl" placeholder="http://localhost:11434/v1">
+      <label>Model</label><input id="llmmodel" placeholder="llama3.2:3b-16k">
+      <label>API key</label><input id="llmkey" type="password" placeholder="write-only, stored encrypted" autocomplete="off">
+    </div>
+    <div class="actions"><button id="llmtest">Test connection</button><button class="primary" id="llmsave">Save</button><span id="llmmsg" class="note"></span></div>
+  </div>
+  <div class="card">
+    <h3>Graph database (Neo4j / Bolt)</h3>
+    <div class="form">
+      <label>URI</label><input id="dburi" placeholder="bolt://neo4j:7687">
+      <label>Username</label><input id="dbuser" placeholder="neo4j">
+      <label>Password</label><input id="dbpass" type="password" placeholder="write-only, stored encrypted" autocomplete="off">
+    </div>
+    <div class="actions"><button id="dbtest">Test connection</button><button class="primary" id="dbsave">Save</button><span id="dbmsg" class="note"></span></div>
+  </div>
+  <div class="card">
+    <h3>Embeddings (optional)</h3>
+    <div class="form">
+      <label>Endpoint URL</label><input id="emurl" placeholder="https://api.openai.com/v1">
+      <label>Model</label><input id="emmodel" placeholder="text-embedding-3-small">
+      <label>API key</label><input id="emkey" type="password" placeholder="write-only" autocomplete="off">
+    </div>
+    <p class="note">Enables vector search and the SEMANTICALLY_RELATED edges. Leave empty to use structural and full-text search only.</p>
+    <div class="actions"><button class="primary" id="emsave">Save</button><span id="emmsg" class="note"></span></div>
+  </div>
+  <p class="note">Secrets are never sent back to this page. The server stores them encrypted and shows only whether they are set.</p>
+</div></div>
+
+<script>
+// ---------- helpers ----------
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const color = k => css('--' + k) || css('--File');
+let LIVE = false;
+
+async function api(path, opts, fallback) {
+  try {
+    const r = await fetch('/api/v1' + path, { ...opts, signal: AbortSignal.timeout(2500),
+      headers: { 'Content-Type':'application/json', ...(opts && opts.headers) } });
+    if (!r.ok) { const t = await r.text().catch(() => ''); throw Object.assign(new Error(t || r.status), { status:r.status }); }
+    LIVE = true; return await r.json();
+  } catch (e) { if (e.status) throw e; return typeof fallback === 'function' ? fallback() : fallback; }
+}
+
+// Edge vocabulary; "reserved" types exist in the schema but the indexer does not populate them.
+const EDGE_TYPES = {
+  populated: ['CONTAINS_PACKAGE','CONTAINS_FOLDER','CONTAINS_FILE','DEFINES','DEFINES_METHOD','IMPORTS','CALLS','CALL_REFERENCE','HTTP_CALLS','IMPLEMENTS','INHERITS','HANDLES','USAGE','MEMBER_OF','TESTS','USES_TYPE'],
+  reserved: ['ASYNC_CALLS','CONFIGURES','WRITES','FILE_CHANGES_WITH','EMITS','LISTENS_ON','DATA_FLOWS','SIMILAR_TO','SEMANTICALLY_RELATED'],
+};
+
+// ---------- demo data (used only when no server answers) ----------
+const DEMO = {
+  project: 'sample-project', user: 'demo-user',
+  nodes: [
+    ['src.auth.tokens.verifyToken','Function','src/auth/tokens.ts',12,31],
+    ['src.auth.tokens.signToken','Function','src/auth/tokens.ts',33,50],
+    ['src.auth.middleware.requireAuth','Function','src/auth/middleware.ts',5,22],
+    ['src.api.routes.GET /items','Route','src/api/routes.ts',14,20],
+    ['src.api.routes.POST /orders','Route','src/api/routes.ts',22,40],
+    ['src.services.ItemService','Class','src/services/item.ts',8,90],
+    ['src.services.ItemService.list','Method','src/services/item.ts',20,34],
+    ['src.services.ItemService.reserve','Method','src/services/item.ts',36,60],
+    ['src.services.OrderService','Class','src/services/order.ts',6,70],
+    ['src.services.OrderService.create','Method','src/services/order.ts',15,52],
+    ['src.db.store.writeRecord','Function','src/db/store.ts',10,28],
+    ['src.db.pool.query','Function','src/db/pool.ts',4,18],
+    ['src.domain.Repository','Interface','src/domain/repo.ts',3,12],
+    ['src.db.OrderRepo','Class','src/db/store.ts',30,80],
+    ['src.util.logger.info','Function','src/util/logger.ts',2,9],
+    ['src.domain.OrderStatus','Enum','src/domain/types.ts',1,6],
+  ].map(([id,kind,file,s,e]) => ({ id, kind, file, start:s, end:e, name:id.split('.').pop() })),
+  edges: [
+    [2,0,'CALLS'],[3,2,'CALLS'],[4,2,'CALLS'],[3,6,'CALLS'],[4,9,'CALLS'],[9,7,'CALLS'],[9,10,'CALLS'],
+    [7,10,'CALLS'],[10,11,'CALLS'],[6,11,'CALLS'],[0,14,'CALLS'],[1,14,'CALLS'],[9,14,'CALLS'],
+    [13,12,'IMPLEMENTS'],[10,13,'CALL_REFERENCE'],[9,15,'USES_TYPE'],[4,1,'USAGE'],
+  ].map(([a,b,t]) => ({ a, b, type:t })),
+};
+
+// ---------- state ----------
+let G = { nodes:[], edges:[] }, selected = null, view = { x:0, y:0, k:1 }, drag = null;
+const hiddenKinds = new Set(), hiddenEdges = new Set();
+let project = '';
+const cv = $('cv'), ctx = cv.getContext('2d');
+
+const visNodes = () => G.nodes.filter(n => !hiddenKinds.has(n.kind));
+const visEdges = () => G.edges.filter(e => !hiddenEdges.has(e.type) && !hiddenKinds.has(e.s.kind) && !hiddenKinds.has(e.t.kind));
+
+async function load() {
+  const projects = await api('/projects', {}, () => ({ projects:[DEMO.project], user:DEMO.user }));
+  const p = $('project');
+  p.innerHTML = projects.projects.map(x => `<option>${esc(x)}</option>`).join('');
+  project = project && projects.projects.includes(project) ? project : projects.projects[0];
+  p.value = project;
+  $('tenant').textContent = 'user: ' + (projects.user || 'default');
+  const data = await api('/graph?limit=400&project=' + encodeURIComponent(project), {}, () => DEMO);
+  G.nodes = data.nodes.map((n, i) => ({ ...n, i, x:Math.cos(i)*200+Math.random()*40, y:Math.sin(i)*200+Math.random()*40, vx:0, vy:0 }));
+  G.edges = data.edges.map(e => ({ ...e, s:G.nodes[e.a], t:G.nodes[e.b] }));
+  selected = null; $('detail').innerHTML = 'Click a node in the graph.';
+  $('mode').textContent = LIVE ? 'live · Neo4j' : 'demo data';
+  $('mode').className = 'pill ' + (LIVE ? 'ok' : 'demo');
+  renderSide(); renderArch(); renderSync(); loadSettings();
+}
+$('project').onchange = e => { project = e.target.value; load(); };
+
+function renderSide() {
+  const kinds = {}, etypes = {};
+  G.nodes.forEach(n => kinds[n.kind] = (kinds[n.kind] || 0) + 1);
+  G.edges.forEach(e => etypes[e.type] = (etypes[e.type] || 0) + 1);
+  const files = new Set(G.nodes.map(n => n.file)).size;
+  $('stats').innerHTML = [['Symbols', G.nodes.length], ['Edges', G.edges.length], ['Files', files], ['Kinds', Object.keys(kinds).length]]
+    .map(([l, v]) => `<div class="stat"><b>${v}</b><small>${l}</small></div>`).join('');
+  $('kinds').innerHTML = Object.entries(kinds).sort((a,b)=>b[1]-a[1]).map(([k, c]) =>
+    `<label class="row"><input type="checkbox" data-kind="${esc(k)}" ${hiddenKinds.has(k)?'':'checked'}><span class="dot" style="background:${color(k)}"></span><span class="n">${esc(k)}</span><span class="c">${c}</span></label>`).join('');
+  const all = [...EDGE_TYPES.populated, ...EDGE_TYPES.reserved];
+  $('etypes').innerHTML = all.map(t => {
+    const c = etypes[t] || 0, res = EDGE_TYPES.reserved.includes(t);
+    return `<label class="row" style="${c||!res?'':'opacity:.55'}"><input type="checkbox" data-etype="${t}" ${hiddenEdges.has(t)?'':'checked'}><span class="n">${t}</span>${res?'<span class="tag res" title="In the schema, not populated by the indexer">reserved</span>':''}<span class="c">${c}</span></label>`;
+  }).join('');
+}
+document.addEventListener('change', e => {
+  const k = e.target.dataset && e.target.dataset.kind, t = e.target.dataset && e.target.dataset.etype;
+  if (k) { e.target.checked ? hiddenKinds.delete(k) : hiddenKinds.add(k); }
+  if (t) { e.target.checked ? hiddenEdges.delete(t) : hiddenEdges.add(t); }
+});
+
+// ---------- tabs ----------
+function show(v) {
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  document.querySelectorAll('.view').forEach(x => x.classList.toggle('on', x.id === 'v-' + v));
+  if (v === 'trace') renderTrace();
+}
+$('tabs').onclick = e => { if (e.target.dataset.v) show(e.target.dataset.v); };
+$('theme').onclick = () => {
+  const cur = document.documentElement.dataset.theme || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+  document.documentElement.dataset.theme = cur === 'light' ? 'dark' : 'light';
+};
+
+// ---------- graph canvas ----------
+function step() {
+  const N = visNodes(), E = visEdges();
+  for (const a of N) for (const b of N) if (a !== b) {
+    const dx = a.x - b.x, dy = a.y - b.y, d2 = dx*dx + dy*dy + 0.01, d = Math.sqrt(d2), f = 4000 / d2;
+    a.vx += dx / d * f; a.vy += dy / d * f;
+  }
+  for (const e of E) {
+    const dx = e.t.x - e.s.x, dy = e.t.y - e.s.y, d = Math.hypot(dx, dy) || 1, f = (d - 110) * 0.02;
+    e.s.vx += dx / d * f; e.s.vy += dy / d * f; e.t.vx -= dx / d * f; e.t.vy -= dy / d * f;
+  }
+  for (const n of N) { n.vx -= n.x * 0.004; n.vy -= n.y * 0.004; if (n !== drag) { n.x += n.vx; n.y += n.vy; } n.vx *= 0.6; n.vy *= 0.6; }
+}
+function draw() {
+  const dpr = devicePixelRatio || 1, w = cv.clientWidth, h = cv.clientHeight;
+  if (!w || !h) return;
+  if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+  ctx.translate(w / 2 + view.x, h / 2 + view.y); ctx.scale(view.k, view.k);
+  const q = $('q').value.toLowerCase(), E = visEdges();
+  const near = new Set(); if (selected) E.forEach(e => { if (e.s === selected) near.add(e.t); if (e.t === selected) near.add(e.s); });
+  for (const e of E) {
+    const on = selected && (e.s === selected || e.t === selected);
+    ctx.strokeStyle = on ? css('--accent') : css('--line'); ctx.lineWidth = on ? 1.6 : 1;
+    ctx.globalAlpha = selected && !on ? 0.35 : 1;
+    ctx.beginPath(); ctx.moveTo(e.s.x, e.s.y); ctx.lineTo(e.t.x, e.t.y); ctx.stroke();
+    if (on) { ctx.fillStyle = css('--muted'); ctx.font = '10px system-ui'; ctx.fillText(e.type, (e.s.x + e.t.x) / 2, (e.s.y + e.t.y) / 2); }
+  }
+  for (const n of visNodes()) {
+    const hit = q && n.id.toLowerCase().includes(q), dim = (selected && n !== selected && !near.has(n)) || (q && !hit);
+    ctx.globalAlpha = dim ? 0.25 : 1; ctx.fillStyle = color(n.kind);
+    ctx.beginPath(); ctx.arc(n.x, n.y, n === selected || hit ? 9 : 6.5, 0, 7); ctx.fill();
+    if (n === selected) { ctx.strokeStyle = css('--text'); ctx.lineWidth = 2; ctx.stroke(); }
+    ctx.fillStyle = css('--text'); ctx.font = '11px system-ui'; ctx.fillText(n.name, n.x + 11, n.y + 4);
+  }
+  ctx.globalAlpha = 1;
+}
+function loop() { step(); draw(); requestAnimationFrame(loop); }
+
+function pick(ev) {
+  const r = cv.getBoundingClientRect();
+  const x = (ev.clientX - r.left - r.width / 2 - view.x) / view.k, y = (ev.clientY - r.top - r.height / 2 - view.y) / view.k;
+  return visNodes().find(n => Math.hypot(n.x - x, n.y - y) < 10 / view.k) || null;
+}
+cv.onmousedown = ev => { const n = pick(ev); drag = n || { pan:true, sx:ev.clientX - view.x, sy:ev.clientY - view.y }; if (n) select(n); };
+cv.ondblclick = ev => { const n = pick(ev); if (n) { select(n); show('trace'); } };
+window.onmousemove = ev => {
+  if (!drag) return;
+  if (drag.pan) { view.x = ev.clientX - drag.sx; view.y = ev.clientY - drag.sy; return; }
+  const r = cv.getBoundingClientRect();
+  drag.x = (ev.clientX - r.left - r.width / 2 - view.x) / view.k; drag.y = (ev.clientY - r.top - r.height / 2 - view.y) / view.k;
+};
+window.onmouseup = () => drag = null;
+cv.onwheel = ev => { ev.preventDefault(); view.k = Math.min(3, Math.max(0.3, view.k * (ev.deltaY < 0 ? 1.1 : 0.9))); };
+
+// ---------- blast radius + detail ----------
+function reach(start, dir, depth) {
+  const seen = new Map([[start, 0]]); let frontier = [start];
+  for (let d = 1; d <= depth; d++) {
+    const next = [];
+    for (const n of frontier) for (const e of visEdges()) {
+      const o = dir === 'in' ? (e.t === n ? e.s : null) : (e.s === n ? e.t : null);
+      if (o && !seen.has(o)) { seen.set(o, d); next.push(o); }
+    }
+    frontier = next;
+  }
+  seen.delete(start); return seen;
+}
+function riskOf(n) {
+  const c = reach(n, 'in', 3).size;
+  return { count:c, level:c < 3 ? 'low' : c < 8 ? 'medium' : 'high' };
+}
+async function select(n) {
+  selected = n;
+  const E = visEdges(), out = E.filter(e => e.s === n), inn = E.filter(e => e.t === n), r = riskOf(n);
+  $('detail').innerHTML = `
+    <div style="font-weight:600;margin-bottom:8px"><span class="dot" style="background:${color(n.kind)};margin-right:6px"></span>${esc(n.name)}</div>
+    <div class="kv"><div>Kind</div><div>${esc(n.kind)}</div><div>Qualified</div><div>${esc(n.id)}</div><div>File</div><div>${esc(n.file)}</div><div>Lines</div><div>${n.start}–${n.end}</div>
+    <div>Blast radius</div><div><span class="risk ${r.level}">${r.level}</span> ${r.count} upstream symbol${r.count===1?'':'s'} (3 hops)</div></div>
+    <div class="actions"><button id="totrace">Trace this symbol</button></div>
+    <h2>Source</h2><pre id="snip">loading…</pre>
+    <h2>Outgoing (${out.length})</h2>${out.map(e => `<div class="edge">${esc(e.type)} → <b data-go="${e.t.i}">${esc(e.t.name)}</b></div>`).join('') || '<div class="edge">none</div>'}
+    <h2>Incoming (${inn.length})</h2>${inn.map(e => `<div class="edge"><b data-go="${e.s.i}">${esc(e.s.name)}</b> → ${esc(e.type)}</div>`).join('') || '<div class="edge">none</div>'}`;
+  $('totrace').onclick = () => show('trace');
+  const s = await api('/snippet?project=' + encodeURIComponent(project) + '&qn=' + encodeURIComponent(n.id), {}, null);
+  if (selected === n && $('snip')) $('snip').textContent = s && s.code ? s.code : 'Source is available when connected to a live server.';
+}
+$('detail').onclick = e => { if (e.target.dataset.go) select(G.nodes[+e.target.dataset.go]); };
+
+// ---------- trace view ----------
+function renderTrace() {
+  const svg = $('tracesvg'), depth = +$('tdepth').value, dir = $('tdir').value;
+  $('tdv').textContent = depth;
+  const q = $('q').value.toLowerCase();
+  const root = selected || (q && visNodes().find(n => n.id.toLowerCase().includes(q))) || null;
+  $('tsym').textContent = root ? root.name : 'none selected';
+  if (!root) { svg.innerHTML = `<text x="20" y="40" fill="${css('--muted')}">Select a symbol on the Graph tab or search for one.</text>`; return; }
+  const levels = new Map([[root, 0]]);
+  if (dir !== 'out') reach(root, 'in', depth).forEach((d, n) => levels.set(n, -d));
+  if (dir !== 'in') reach(root, 'out', depth).forEach((d, n) => { if (!levels.has(n)) levels.set(n, d); });
+  const cols = {}; levels.forEach((l, n) => (cols[l] = cols[l] || []).push(n));
+  const keys = Object.keys(cols).map(Number).sort((a, b) => a - b), W = 190, H = 46, GX = 70, GY = 18, pos = new Map();
+  keys.forEach((l, ci) => cols[l].forEach((n, ri) => pos.set(n, { x:20 + ci * (W + GX), y:20 + ri * (H + GY) })));
+  const width = 40 + keys.length * (W + GX), height = 40 + Math.max(...keys.map(l => cols[l].length)) * (H + GY);
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`); svg.style.minWidth = width + 'px';
+  let out = `<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="${css('--muted')}"/></marker></defs>`;
+  for (const e of visEdges()) {
+    const a = pos.get(e.s), b = pos.get(e.t); if (!a || !b) continue;
+    const x1 = a.x + W, y1 = a.y + H / 2, x2 = b.x, y2 = b.y + H / 2, mx = (x1 + x2) / 2;
+    const back = x2 <= x1;
+    out += `<path d="M${back ? a.x : x1} ${y1} C ${back ? a.x - 40 : mx} ${y1}, ${back ? b.x + W + 40 : mx} ${y2}, ${back ? b.x + W : x2} ${y2}" fill="none" stroke="${css('--muted')}" stroke-width="1.2" marker-end="url(#ar)"/>`;
+    out += `<text x="${(x1 + x2) / 2}" y="${(y1 + y2) / 2 - 4}" font-size="10" fill="${css('--muted')}" text-anchor="middle">${esc(e.type)}</text>`;
+  }
+  pos.forEach((p, n) => {
+    const c = color(n.kind);
+    out += `<g data-go="${n.i}" style="cursor:pointer"><rect x="${p.x}" y="${p.y}" width="${W}" height="${H}" rx="8" fill="${css('--panel')}" stroke="${n === root ? css('--accent') : c}" stroke-width="${n === root ? 2.5 : 1.3}"/>
+      <text x="${p.x + 10}" y="${p.y + 19}" font-size="12" font-weight="600" fill="${css('--text')}" data-go="${n.i}">${esc(n.name.slice(0, 24))}</text>
+      <text x="${p.x + 10}" y="${p.y + 35}" font-size="10" fill="${c}" data-go="${n.i}">${esc(n.kind)} · ${esc(n.file.split('/').pop())}</text></g>`;
+  });
+  svg.innerHTML = out;
+}
+$('tracesvg').onclick = e => { const g = e.target.closest('[data-go]'); if (g) { select(G.nodes[+g.dataset.go]); renderTrace(); } };
+$('tdepth').oninput = renderTrace; $('tdir').onchange = renderTrace;
+$('q').oninput = () => { if ($('v-trace').classList.contains('on')) renderTrace(); };
+
+// ---------- architecture ----------
+async function renderArch() {
+  const a = await api('/architecture?project=' + encodeURIComponent(project), {}, () => {
+    const langs = {}; G.nodes.forEach(n => { const x = (n.file.split('.').pop() || '').toLowerCase(); langs[x] = (langs[x] || 0) + 1; });
+    const inc = new Map(); G.edges.forEach(e => inc.set(e.t, (inc.get(e.t) || 0) + 1));
+    return {
+      languages:Object.entries(langs).map(([name, symbols]) => ({ name, symbols })),
+      routes:G.nodes.filter(n => n.kind === 'Route').map(n => n.name),
+      hotspots:[...inc.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([n, c]) => ({ name:n.name, callers:c })),
+      adrs:[],
+    };
+  });
+  $('archbody').innerHTML = `
+    <div class="card"><h3>Languages (by symbol count)</h3><table><tbody>${a.languages.map(l => `<tr><td>${esc(l.name)}</td><td>${l.symbols}</td></tr>`).join('') || '<tr><td class="note">none</td></tr>'}</tbody></table></div>
+    <div class="card"><h3>Routes</h3>${a.routes.map(r => `<div>${esc(r)}</div>`).join('') || '<span class="note">none</span>'}</div>
+    <div class="card"><h3>Hotspots (most referenced)</h3><table><tbody>${a.hotspots.map(h => `<tr><td>${esc(h.name)}</td><td>${h.callers} inbound</td></tr>`).join('') || '<tr><td class="note">none</td></tr>'}</tbody></table></div>
+    <div class="card"><h3>Architecture decision records</h3>
+      <div id="adrlist">${(a.adrs || []).map(d => `<div><b>${esc(d.title)}</b><div class="note">${esc(d.body)}</div></div>`).join('') || '<span class="note">No ADRs yet.</span>'}</div>
+      <div class="form" style="margin-top:12px"><label>Title</label><input id="adrt"><label>Decision</label><textarea id="adrb" rows="3"></textarea></div>
+      <div class="actions"><button id="adradd">Add ADR</button><span id="adrmsg" class="note"></span></div></div>`;
+  $('adradd').onclick = async () => {
+    try { await api('/adr', { method:'POST', body:JSON.stringify({ project, title:$('adrt').value, body:$('adrb').value }) }, () => { throw Object.assign(new Error('offline'), { status:0 }); });
+      $('adrmsg').textContent = 'Saved.'; renderArch(); } catch { $('adrmsg').textContent = 'Needs a live server.'; }
+  };
+}
+
+// ---------- read-only query ----------
+$('runq').onclick = async () => {
+  const out = $('qout'); out.textContent = 'running…'; out.className = '';
+  try {
+    const r = await api('/query', { method:'POST', body:JSON.stringify({ project, cypher:$('cypher').value }) }, null);
+    out.textContent = r ? JSON.stringify(r, null, 2) : 'Needs a live server (demo mode has no database).';
+  } catch (e) { out.className = 'err'; out.textContent = e.status === 403 ? '403 Forbidden: only read-only queries are allowed.' : 'Error: ' + e.message; }
+};
+
+// ---------- chat ----------
+function addMsg(t, me, err) { const d = document.createElement('div'); d.className = 'msg' + (me ? ' me' : '') + (err ? ' err' : ''); d.textContent = t; $('chatlog').appendChild(d); d.scrollIntoView(); }
+async function send() {
+  const t = $('chatin').value.trim(); if (!t) return; $('chatin').value = ''; addMsg(t, true);
+  try {
+    const r = await api('/chat', { method:'POST', body:JSON.stringify({ project, message:t }) }, null);
+    addMsg(r ? r.reply : 'Chat needs a live server with an LLM endpoint configured under Settings.', false, !r);
+  } catch (e) { addMsg('Error: ' + e.message, false, true); }
+}
+$('chatsend').onclick = send; $('chatin').onkeydown = e => { if (e.key === 'Enter') send(); };
+
+// ---------- sync ----------
+async function renderSync() {
+  const s = await api('/sync/status?project=' + encodeURIComponent(project), {}, () => ({
+    autoTracking:true,
+    agents:[{ name:'dev-laptop', repo:project, online:true, lastSync:'just now', files:G.nodes.length ? new Set(G.nodes.map(n => n.file)).size : 0 }],
+    index:{ files:new Set(G.nodes.map(n => n.file)).size, symbols:G.nodes.length, edges:G.edges.length, pending:0 },
+  }));
+  $('autotrack').checked = !!s.autoTracking;
+  $('agents').innerHTML = s.agents.map(a => `<tr><td>${esc(a.name)}</td><td>${esc(a.repo)}</td><td>${a.online ? '<span class="pill ok">online</span>' : '<span class="pill">offline</span>'}</td><td>${esc(a.lastSync)}</td><td>${a.files}</td></tr>`).join('') || '<tr><td colspan="5" class="note">No agents connected.</td></tr>';
+  $('idxstats').innerHTML = [['Files', s.index.files], ['Symbols', s.index.symbols], ['Edges', s.index.edges], ['Pending', s.index.pending]]
+    .map(([l, v]) => `<div class="stat"><b>${v}</b><small>${l}</small></div>`).join('');
+}
+$('autotrack').onchange = async e => {
+  try { await api('/sync/auto', { method:'POST', body:JSON.stringify({ enabled:e.target.checked }) }, () => { throw Object.assign(new Error('offline'), { status:0 }); }); $('syncmsg').textContent = 'Auto-tracking ' + (e.target.checked ? 'on' : 'off'); }
+  catch { $('syncmsg').textContent = 'Needs a live server (not saved).'; }
+};
+$('force').onclick = async () => {
+  $('force').disabled = true; $('syncmsg').textContent = 'Requesting…';
+  try { const r = await api('/sync/force', { method:'POST', body:JSON.stringify({ project }) }, null); $('syncmsg').textContent = r ? `Asked ${r.agents} agent(s) to re-sync.` : 'Needs a live server.'; renderSync(); }
+  catch (e) { $('syncmsg').textContent = 'Error: ' + e.message; }
+  $('force').disabled = false;
+};
+
+// ---------- settings (secrets are write-only) ----------
+async function loadSettings() {
+  const s = await api('/settings', {}, null); if (!s) return;
+  $('llmprov').value = s.llm.provider; $('llmurl').value = s.llm.url || ''; $('llmmodel').value = s.llm.model || '';
+  $('llmkey').placeholder = s.llm.keySet ? '•••• set (leave blank to keep)' : 'write-only, stored encrypted';
+  $('dburi').value = s.db.uri || ''; $('dbuser').value = s.db.username || '';
+  $('dbpass').placeholder = s.db.passwordSet ? '•••• set (leave blank to keep)' : 'write-only, stored encrypted';
+  $('emurl').value = s.embeddings.url || ''; $('emmodel').value = s.embeddings.model || '';
+  $('emkey').placeholder = s.embeddings.keySet ? '•••• set (leave blank to keep)' : 'write-only';
+}
+async function saveSettings(body, msg, test) {
+  $(msg).textContent = test ? 'Testing…' : 'Saving…';
+  try { const r = await api(test ? '/settings/test' : '/settings', { method:test ? 'POST' : 'PUT', body:JSON.stringify(body) }, null);
+    $(msg).textContent = r ? (test ? (r.ok ? 'Connection OK' : 'Failed: ' + r.error) : 'Saved.') : 'Needs a live server (not saved).';
+    if (!test) { ['llmkey','dbpass','emkey'].forEach(i => $(i).value = ''); loadSettings(); }
+  } catch (e) { $(msg).textContent = 'Error: ' + e.message; }
+}
+const llmBody = () => ({ llm:{ provider:$('llmprov').value, url:$('llmurl').value, model:$('llmmodel').value, key:$('llmkey').value || undefined } });
+const dbBody = () => ({ db:{ uri:$('dburi').value, username:$('dbuser').value, password:$('dbpass').value || undefined } });
+$('llmsave').onclick = () => saveSettings(llmBody(), 'llmmsg'); $('llmtest').onclick = () => saveSettings(llmBody(), 'llmmsg', true);
+$('dbsave').onclick = () => saveSettings(dbBody(), 'dbmsg'); $('dbtest').onclick = () => saveSettings(dbBody(), 'dbmsg', true);
+$('emsave').onclick = () => saveSettings({ embeddings:{ url:$('emurl').value, model:$('emmodel').value, key:$('emkey').value || undefined } }, 'emmsg');
+
+load().then(loop);
+</script>
+</body>
+</html>

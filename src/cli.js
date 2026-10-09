@@ -1,0 +1,42 @@
+#!/usr/bin/env node
+import path from 'node:path';
+import { readFileSync } from 'node:fs';
+import { parseEnv } from 'node:util';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { loadConfig } from './config.js';
+import { Db } from './db.js';
+import { Store } from './store.js';
+import { Llm } from './llm.js';
+import { createMcpServer } from './mcp.js';
+import { createApp } from './server.js';
+
+// The project's own .env is authoritative for its NEO4J_* / CODELENSE_* keys, so a host process (e.g. an agent
+// gateway that spawns us over stdio) cannot point us at someone else's database through inherited variables.
+try {
+  const own = parseEnv(readFileSync(new URL('../.env', import.meta.url), 'utf8'));
+  for (const [k, v] of Object.entries(own)) if (/^(NEO4J_|CODELENSE_)/.test(k)) process.env[k] = v;
+} catch { /* no .env: use process env */ }
+
+async function boot() {
+  const cfg = loadConfig();
+  const db = new Db(cfg);
+  await db.init();
+  const store = new Store(cfg.dataDir);
+  const llm = new Llm(store);
+  return { db, cfg, store, llm, tenant: { user_id: cfg.userId } };
+}
+
+const mode = process.argv[2] === '--stdio' ? 'stdio' : process.argv[2] ?? 'serve';
+
+if (mode === 'stdio') {
+  const ctx = await boot();
+  await createMcpServer(ctx).connect(new StdioServerTransport());
+} else if (mode === 'serve') {
+  const ctx = await boot();
+  createApp(ctx).listen(ctx.cfg.port, ctx.cfg.host, () => {
+    console.error(`codelense-mcp listening on http://${ctx.cfg.host}:${ctx.cfg.port} (UI: /ui, MCP SSE: /sse, data: ${path.resolve(ctx.cfg.dataDir)})`);
+  });
+} else {
+  console.error('usage: codelense-mcp [serve | --stdio]');
+  process.exit(2);
+}

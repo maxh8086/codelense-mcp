@@ -1,0 +1,85 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import { langForFile } from './langs.js';
+import { parseSource } from './parser.js';
+import { extractTree, extractLite, extractResource } from './extract.js';
+import { buildFile, linkRefs, NameIndex, resolveImports } from './linker.js';
+import { DEFAULT_IGNORE_DIRS } from './constants.js';
+
+const MAX_BYTES = 1_000_000;
+export const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
+
+// Read-only walk: never writes into the repo being indexed.
+export async function* walk(root, ignore = DEFAULT_IGNORE_DIRS) {
+  const skip = new Set(ignore.filter((i) => !i.includes('/')));
+  const stack = [root];
+  while (stack.length) {
+    const dir = stack.pop();
+    let ents;
+    try { ents = await fs.readdir(dir, { withFileTypes: true }); } catch { continue; }
+    for (const e of ents) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) { if (!skip.has(e.name)) stack.push(full); } else if (e.isFile() && langForFile(e.name)) yield full;
+    }
+  }
+}
+
+export async function extractSource(filePath, source, grammarsDir) {
+  const cfg = langForFile(filePath);
+  if (!cfg) return null;
+  if (cfg.lite) return extractLite(source, cfg);
+  if (cfg.resource) return extractResource(source, cfg);
+  const tree = await parseSource(cfg, source, grammarsDir);
+  return tree ? extractTree(tree, source, cfg) : null;
+}
+
+// Index a set of files for one tenant. `files` are {rel, source}; unchanged sha256 values are skipped unless force.
+export async function indexFiles(db, t, project, files, { force = false, grammarsDir, embed } = {}) {
+  const known = force ? new Map() : await db.fileHashes(t);
+  const stats = { indexed: 0, skipped: 0, failed: 0, errors: [] };
+  const built = [];
+  for (const { rel, source, ast, hash: given } of files) {
+    const hash = given ?? sha256(source ?? JSON.stringify(ast));
+    if (known.get(rel) === hash) { stats.skipped++; continue; }
+    try {
+      const x = ast ?? await extractSource(rel, source, grammarsDir);
+      if (!x) { stats.skipped++; continue; }
+      const f = buildFile(project, rel, x, { lang: langForFile(rel)?.id ?? '' });
+      f.nodes.find((n) => n.label === 'File').sha256 = hash;
+      await db.replaceFile(t, rel, f.nodes, f.edges);
+      built.push(f);
+      stats.indexed++;
+    } catch (err) { stats.failed++; stats.errors.push(`${rel}: ${err.message}`.slice(0, 200)); }
+  }
+  if (built.length) {
+    const index = new NameIndex(await db.nameIndex(t));
+    const allFiles = new Set((await db.fileHashes(t)).keys());
+    const edges = [];
+    for (const f of built) {
+      edges.push(...linkRefs(f.pending, index));
+      for (const target of resolveImports(f.filePath, f.imports, allFiles)) {
+        edges.push({ type: 'IMPORTS', from: f.fileQn, to: `${project}.${target}`, line: null });
+      }
+    }
+    await db.writeEdges(t, edges);
+    stats.links = edges.length;
+    if (embed) embed(t, built).catch(() => {});
+  }
+  return stats;
+}
+
+export async function indexRepository(db, t, project, root, opts = {}) {
+  const files = [];
+  for await (const full of walk(root, opts.ignore)) {
+    const st = await fs.stat(full);
+    if (st.size > MAX_BYTES) continue;
+    files.push({ rel: path.relative(root, full).split(path.sep).join('/'), source: await fs.readFile(full, 'utf8') });
+  }
+  const stats = await indexFiles(db, t, project, files, opts);
+  // Files that disappeared since the last run are purged.
+  const present = new Set(files.map((f) => f.rel));
+  let removed = 0;
+  for (const p of (await db.fileHashes(t)).keys()) if (!present.has(p)) { await db.deleteFile(t, p); removed++; }
+  return { ...stats, removed, files: files.length };
+}

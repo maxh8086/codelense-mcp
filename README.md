@@ -8,6 +8,31 @@ links symbols across files, stores the result in Neo4j, and exposes it through a
 > place. The indexer, linker, MCP tools, server, client daemon and Docker packaging are being
 > built. Nothing here is released yet.
 
+## What problem does it solve?
+
+AI coding agents work blind on large codebases. To answer "what breaks if I change `verifyJwt`?"
+they usually grep, open file after file, and stuff raw source into the context window. That is
+slow, burns tokens, misses relationships that span files, and gets worse as the repo grows.
+
+codelense-mcp indexes the repository once into a graph of symbols (functions, classes, routes,
+types, files) and the relationships between them (calls, imports, inheritance, type usage). The
+agent then asks precise structural questions instead of reading code.
+
+## How it helps
+
+- **Fewer tokens, faster answers:** a query returns a small, relevant slice (a call path, a list
+  of callers, one snippet) instead of whole files.
+- **Impact analysis:** `trace_path` and `detect_changes` show what calls a symbol and what a
+  change may affect before you make it.
+- **Navigation and onboarding:** `get_architecture`, `search_graph` and `search_code` give a map
+  of an unfamiliar repo in a few calls.
+- **Stays current:** the watch daemon re-indexes only the files you change, so the graph tracks
+  your working tree.
+- **Scales and isolates:** the graph lives in Neo4j, handles large repos, and is partitioned per
+  user and repository, so many people and projects can share one instance.
+- **Works with any MCP client:** stdio for local agents, SSE for remote or shared setups, plus a
+  web UI to browse the graph yourself.
+
 ## Planned design
 
 - **Storage:** its own bundled Neo4j 5 (Docker Compose, own volume). Any Bolt/openCypher
