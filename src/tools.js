@@ -110,6 +110,13 @@ async function listProjectRows(ctx) {
   return rows.map((r) => ({ ...r, root: meta(ctx, r.name).root ?? null, last_sync: meta(ctx, r.name).last_sync ?? null, ...staleInfo(meta(ctx, r.name)) }));
 }
 
+// Deepest depth (down to 1) whose measured size fits the limit. Falls back to 1 when nothing fits.
+export async function chooseDepth(requested, limit, measure) {
+  let depth = requested;
+  while (depth > 1 && (await measure(depth)) > limit) depth--;
+  return depth;
+}
+
 export function buildTools() {
   const T = [];
   const fmt = z.enum(['compact', 'json']).optional().describe('compact (default, token-lean text) or json (full object)');
@@ -345,25 +352,41 @@ export function buildTools() {
     return { text: parts.join('\n\n'), nodes: near.length + 1 };
   };
 
+  // Auto-narrow the trace depth to fit the confirm threshold. Only paid sources are gated, so only they narrow.
+  const pickDepth = async (ctx, a, question = '') => {
+    const requested = a.depth ?? 2;
+    if (!ctx.llm.isPaid()) return { depth: requested, depth_used: requested };
+    const limit = ctx.llm.settings().guardrails.confirm_tokens;
+    const measure = async (depth) => {
+      const c = await flowContext(ctx, { ...a, depth });
+      return estimateTokens(question ? `${c.text}\n\nQuestion: ${question}` : c.text);
+    };
+    const depth = await chooseDepth(requested, limit, measure);
+    if (depth === requested) return { depth, depth_used: depth };
+    return { depth, depth_used: depth, note: `Depth reduced from ${requested} to ${depth} to stay under ${limit} tokens` };
+  };
+
   add('estimate_cost', 'Estimate LLM tokens for asking about a flow, and which approval tier applies.',
     { project, qualified_name: z.string(), depth: z.number().int().min(1).max(3).optional() },
     async (ctx, a) => {
-      const c = await flowContext(ctx, a);
+      const picked = await pickDepth(ctx, a);
+      const c = await flowContext(ctx, { ...a, depth: picked.depth });
       const tokens = estimateTokens(c.text);
-      return { estimated_tokens: tokens, nodes: c.nodes, tier: ctx.llm.tier(tokens), usage: ctx.llm.usage() };
+      return { estimated_tokens: tokens, nodes: c.nodes, tier: ctx.llm.tier(tokens), usage: ctx.llm.usage(), depth_used: picked.depth_used, ...(picked.note ? { note: picked.note } : {}) };
     });
 
   add('ask_flow', 'Ask the configured LLM about a flow. Above the confirm threshold the call returns needs_approval; resend with approval_id (and send_anyway:true above the hard limit).',
     { project, qualified_name: z.string(), question: z.string().min(1).max(2000), depth: z.number().int().min(1).max(3).optional(), approval_id: z.string().optional(), send_anyway: z.boolean().optional() },
     async (ctx, a) => {
-      const c = await flowContext(ctx, a);
+      const picked = await pickDepth(ctx, a, a.question);
+      const c = await flowContext(ctx, { ...a, depth: picked.depth });
       const prompt = `${c.text}\n\nQuestion: ${a.question}`;
       const tokens = estimateTokens(prompt);
-      const scope = `${a.project}:${a.qualified_name}:${a.depth ?? 2}`;
+      const scope = `${a.project}:${a.qualified_name}:${picked.depth}`;
       const gate = ctx.llm.gate(scope, tokens, a);
-      if (!gate.ok) return gate;
+      if (!gate.ok) return { ...gate, depth_used: picked.depth_used, ...(picked.note ? { note: picked.note } : {}) };
       const sys = renderPrompt(DEFAULT_SYSTEM_PROMPT, { USER_ID: ctx.tenant.user_id, REPO_NAME: a.project });
-      return { ...(await ctx.llm.complete(prompt, { system: sys })), estimated_tokens: tokens };
+      return { ...(await ctx.llm.complete(prompt, { system: sys })), estimated_tokens: tokens, depth_used: picked.depth_used, ...(picked.note ? { note: picked.note } : {}) };
     });
 
   add('summarize_symbol', 'One-paragraph LLM summary of a symbol (same approval gate as ask_flow).',
