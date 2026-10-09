@@ -165,7 +165,8 @@ export function ErdTab() {
   const auto = async (extra = {}) => {
     setBusy(true); setMsg('Asking the local LLM…'); setApproval(null);
     try {
-      const r = await post('/erd/ai', { ...src(), ...extra });
+      const slow = new Promise((_, rej) => setTimeout(() => rej(new Error('The local LLM did not answer in time. Check that it is running and reachable (Settings → LLM).')), 150_000));
+      const r = await Promise.race([post('/erd/ai', { ...src(), ...extra }), slow]);
       if (r.needs_approval) { setApproval(r); setMsg(`Needs approval: about ${r.estimated_tokens.toLocaleString()} tokens (${r.tier}).`); return; }
       if (r.ok === false) { setMsg(r.error); return; }
       setModel(r.model);
