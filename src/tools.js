@@ -75,7 +75,7 @@ async function gitGrep(root, pattern, limit) {
   if (out === null) return null;
   const matches = [];
   let more = false;
-  for (const line of out.split('\n')) {
+  for (const line of out.split(/\r?\n/)) {
     const m = /^(.+?):(\d+):(.*)$/.exec(line);
     if (!m || m[3].length > 500 || !langForFile(m[1])) continue;
     if (matches.length >= limit) { more = true; break; }

@@ -44,7 +44,10 @@ def baseline(b):
     flags = ["-n", "-E"] + (["-i"] if b.get("ignore_case") else [])
     text, hits = "", {}
     for rx in b["grep"]:
-        out = run(["git", "grep"] + flags + [rx, "--"] + paths)
+        r = subprocess.run(["git", "grep"] + flags + [rx, "--"] + paths, cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if r.returncode > 1:
+            raise SystemExit(f"git grep failed for {rx!r}: {r.stderr.strip()}")
+        out = r.stdout
         text += out
         for ln in out.splitlines():
             m = re.match(r"^(.*?):(\d+):", ln)

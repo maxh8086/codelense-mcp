@@ -28,7 +28,7 @@ Before = JSON output (first run). After = compact default (git-routed `search_co
 | 8 | What changed (`detect_changes`) vs `git status --short` | 45 | 69 | 44 | 1 | 2% |
 | | **Total** | **21,163** | **3,644** | **1,540** | **19,623** | **93%** |
 
-**Extended run (16 tasks): 49,001 baseline vs 4,474 graph tokens, 91% saved.** Full table and losses (callee trace is noisy: same-name `.get`/`.set`/test-fake matches) in [`Benchmark/RESULTS.md`](../Benchmark/RESULTS.md).
+**Extended run (16 tasks): 52,140 baseline vs 4,953 graph tokens, 90% saved.** Full table and losses (callee trace is noisy: same-name `.get`/`.set`/test-fake matches) in [`Benchmark/RESULTS.md`](../Benchmark/RESULTS.md).
 
 Baselines were re-measured on the current tree (tasks 2, 3, 5, 8 moved slightly because the repo changed), so compare Before/After columns, not Before against the old baselines. The totals went from 83% to 93% saved. Rows 1-3 and 7 carry most of the saving.
 
