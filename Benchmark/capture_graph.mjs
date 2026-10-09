@@ -28,7 +28,7 @@ for (const t of JSON.parse(fs.readFileSync(path.join(here, 'tasks.json'), 'utf8'
   const { tool, args } = t.graph_call;
   const a = { ...args };
   if (a.name) {
-    const found = JSON.parse(await call('search_graph', { query: a.name, limit: 10 })).results ?? [];
+    const found = JSON.parse(await call('search_graph', { query: a.name, limit: 10, format: 'json' })).results ?? [];
     const hit = found.find((x) => x.name === a.name || x.qualified_name.endsWith(`.${a.name}`)) ?? found[0];
     delete a.name;
     a.qualified_name = hit?.qualified_name;

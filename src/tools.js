@@ -3,8 +3,10 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { z } from 'zod';
-import { ROOT_LABEL, NODE_LABELS, EDGE_TYPES, PRODUCED_EDGE_TYPES, assertEdge } from './constants.js';
+import { ROOT_LABEL, NODE_LABELS, EDGE_TYPES, PRODUCED_EDGE_TYPES, DEFAULT_IGNORE_DIRS, assertEdge } from './constants.js';
 import { indexRepository, sha256, walk } from './indexer.js';
+import { langForFile } from './langs.js';
+import * as C from './compact.js';
 import { estimateTokens } from './llm.js';
 import { savingsSummary } from './savings.js';
 import { summarizeEnabled, summarizeMissing } from './summarize.js';
@@ -54,6 +56,34 @@ async function readLines(root, rel, from, to) {
   return text.split(/\r?\n/).slice(Math.max(0, from - 1), to).join('\n');
 }
 
+// Git is optional (absent in some images, repo may not be a checkout): every caller must handle null and fall back.
+// autocrlf=input: CRLF checkouts on bind mounts (Windows) must not read as modified in a Linux container.
+const GIT = ['-c', 'safe.directory=*', '-c', 'core.autocrlf=input'];
+function git(root, args, timeout = 10_000) {
+  return new Promise((resolve) => {
+    execFile('git', [...GIT, ...args], { cwd: root, timeout, maxBuffer: 16 * 1024 * 1024 }, (err, out) => resolve(err ? null : out));
+  });
+}
+const headSha = async (root) => (await git(root, ['rev-parse', 'HEAD']))?.trim() || null;
+// Patterns whose JS RegExp meaning differs from POSIX ERE stay on the JS path.
+const JS_ONLY = /\(\?|\\[dDtnrfvu0-9xcpk]/;
+
+async function gitGrep(root, pattern, limit) {
+  if (JS_ONLY.test(pattern)) return null;
+  const excl = DEFAULT_IGNORE_DIRS.filter((d) => !d.includes('/')).map((d) => `:(exclude)**/${d}/**`);
+  const out = await git(root, ['grep', '-n', '-I', '-i', '-E', '--untracked', '-e', pattern, '--', '.', ...excl], 20_000);
+  if (out === null) return null;
+  const matches = [];
+  let more = false;
+  for (const line of out.split('\n')) {
+    const m = /^(.+?):(\d+):(.*)$/.exec(line);
+    if (!m || m[3].length > 500 || !langForFile(m[1])) continue;
+    if (matches.length >= limit) { more = true; break; }
+    matches.push({ file: m[1], line: Number(m[2]), text: m[3].trim().slice(0, 200) });
+  }
+  return { matches, more };
+}
+
 async function nodeByQn(ctx, p, qn) {
   const [n] = await ctx.db.run(`MATCH (n:${ROOT_LABEL} {user_id:$u, repo_name:$r, qualified_name:$q}) RETURN properties(n) AS n`, { u: ctx.tenant.user_id, r: p, q: qn });
   return n?.n ?? null;
@@ -81,7 +111,8 @@ async function listProjectRows(ctx) {
 
 export function buildTools() {
   const T = [];
-  const add = (name, description, shape, handler) => T.push({ name, description, schema: z.object(shape), handler });
+  const fmt = z.enum(['compact', 'json']).optional().describe('compact (default, token-lean text) or json (full object)');
+  const add = (name, description, shape, handler, compact) => T.push({ name, description, schema: z.object(compact ? { ...shape, format: fmt } : shape), handler, compact });
 
   add('index_repository', 'Index (or incrementally refresh) a local repository into the graph. Reads files only; never modifies the repo. Use when the user says "index this repo": pass root_path as the current working directory (absolute) and project as that folder\'s name.',
     { project, root_path: z.string().optional(), force: z.boolean().optional() },
@@ -94,7 +125,7 @@ export function buildTools() {
       if (summarizeEnabled(ctx.cfg)) {
         stats.summaries = await summarizeMissing(ctx, a.project, { limit: ctx.cfg.summarizeOnIndex.limit }).catch((e) => ({ error: e.message }));
       }
-      setMeta(ctx, a.project, { root, last_sync: Date.now() });
+      setMeta(ctx, a.project, { root, last_sync: Date.now(), index_sha: await headSha(root) });
       ctx.store.audit({ event: 'index', user: t.user_id, project: a.project, ...stats, errors: undefined });
       return stats;
     });
@@ -164,36 +195,39 @@ export function buildTools() {
           `MATCH (n:${ROOT_LABEL}${lbl} {user_id:$u, repo_name:$r}) RETURN n.qualified_name AS qualified_name, n.name AS name, labels(n) AS labels, n.file_path AS file_path, n.start_line AS start_line ORDER BY n.qualified_name SKIP toInteger($off) LIMIT toInteger($lim)`,
           { u: ctx.tenant.user_id, r: a.project, lim, off });
       return { results: rows, offset: off, limit: lim, has_more: rows.length === lim };
-    });
+    }, C.renderSearchGraph);
 
   add('search_code', 'Regex/literal search over the indexed repository files on disk (read-only).',
     { project, pattern: z.string().min(1), limit: z.number().int().min(1).max(200).optional() },
     async (ctx, a) => {
       const root = rootOf(ctx, a.project);
+      const limit = a.limit ?? 50;
+      const g = await gitGrep(root, a.pattern, limit);
+      if (g) return { matches: g.matches, ...(g.more ? { truncated: true } : {}) };
       let re;
       try { re = new RegExp(a.pattern, 'i'); } catch { re = new RegExp(a.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'); }
       const out = [];
       for await (const full of walk(root)) {
         const lines = (await fs.readFile(full, 'utf8').catch(() => '')).split(/\r?\n/);
-        for (let i = 0; i < lines.length && out.length < (a.limit ?? 50); i++) {
+        for (let i = 0; i < lines.length && out.length < limit; i++) {
           if (re.test(lines[i])) out.push({ file: path.relative(root, full).split(path.sep).join('/'), line: i + 1, text: lines[i].trim().slice(0, 200) });
         }
-        if (out.length >= (a.limit ?? 50)) break;
+        if (out.length >= limit) break;
       }
       return { matches: out };
-    });
+    }, C.renderSearchCode);
 
   add('get_code_snippet', 'Return the source of a symbol by qualified name (stored source first, disk as fallback; read-only).', { project, qualified_name: z.string() },
     async (ctx, a) => {
       const n = await nodeByQn(ctx, a.project, a.qualified_name);
       if (!n) throw new HttpError(404, 'symbol not found');
       const code = n.source || (n.file_path ? await readLines(rootOf(ctx, a.project), n.file_path, n.start_line ?? 1, n.end_line ?? (n.start_line ?? 1) + 60) : '');
-      return { qualified_name: n.qualified_name, file_path: n.file_path, start_line: n.start_line, end_line: n.end_line, signature: n.signature, code };
-    });
+      return { qualified_name: n.qualified_name, file_path: n.file_path, start_line: n.start_line, end_line: n.end_line, signature: n.signature, code: code.replace(/\r\n/g, '\n') };
+    }, C.renderSnippet);
 
   add('trace_path', 'Walk relationships from a symbol (callers/callees/usages) up to depth 5.',
     { project, qualified_name: z.string(), direction: z.enum(['in', 'out', 'both']).optional(), depth: z.number().int().min(1).max(5).optional(), edge_types: z.array(z.string()).optional() },
-    async (ctx, a) => ({ nodes: await traceRows(ctx, a.project, a.qualified_name, a) }));
+    async (ctx, a) => ({ nodes: await traceRows(ctx, a.project, a.qualified_name, a) }), C.renderTrace);
 
   add('query_graph', 'Run a READ-ONLY Cypher query. Must reference $user_id and $repo_name; write clauses are rejected with 403; max 500 rows.',
     { project, cypher: z.string().min(1) },
@@ -202,7 +236,7 @@ export function buildTools() {
       if (!/\$user_id\b/.test(a.cypher)) throw new HttpError(403, 'query must filter on $user_id (tenant isolation)');
       const rows = await ctx.db.run(a.cypher, { user_id: ctx.tenant.user_id, repo_name: a.project });
       return { rows: rows.slice(0, 500), truncated: rows.length > 500 };
-    });
+    }, C.renderQueryGraph);
 
   add('get_architecture', 'Overview: counts by label and edge type, languages, top folders.', { project },
     async (ctx, a) => {
@@ -229,17 +263,18 @@ export function buildTools() {
         const rel = path.relative(root, full).split(path.sep).join('/');
         seen.add(rel);
         const h = known.get(rel);
-        if (h === undefined) added.push(rel);
+        if (h === undefined) { if (langForFile(rel) && !/\.(md|markdown)$/i.test(rel)) added.push(rel); } // markdown has no extractor, so it is never hashed
         else if (sha256(await fs.readFile(full, 'utf8')) !== h) modified.push(rel);
       }
       const removed = [...known.keys()].filter((k) => !seen.has(k));
-      // Git-aware: files git reports as changed in the working tree (null when root is not a git repo).
-      const git_dirty = await new Promise((resolve) => {
-        execFile('git', ['status', '--porcelain'], { cwd: root, timeout: 10_000 }, (err, out) =>
-          resolve(err ? null : out.split('\n').filter(Boolean).map((l) => l.slice(3).trim())));
-      });
-      return { added, modified, removed, git_dirty, clean: !(added.length || modified.length || removed.length) };
-    });
+      // Git-aware: working-tree changes per git (null when git or a repo is unavailable), plus index staleness by commit.
+      const porcelain = await git(root, ['status', '--porcelain']);
+      const git_dirty = porcelain === null ? null : porcelain.split('\n').filter(Boolean).map((l) => l.slice(3).trim());
+      const head_sha = await headSha(root);
+      const index_sha = meta(ctx, a.project).index_sha ?? null;
+      const stale = !!(head_sha && index_sha && head_sha !== index_sha);
+      return { added, modified, removed, git_dirty, clean: !(added.length || modified.length || removed.length), index_sha, head_sha, stale };
+    }, C.renderChanges);
 
   add('manage_adr', 'Store or read architecture decision records for a project (kept in the synaptree store).',
     { project, action: z.enum(['list', 'get', 'set', 'delete']), id: z.string().optional(), title: z.string().optional(), content: z.string().optional() },

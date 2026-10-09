@@ -12,7 +12,7 @@ ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 WORKDIR /app
 COPY package*.json ./
-RUN apk add --no-cache unixodbc && npm ci --omit=dev
+RUN apk add --no-cache unixodbc git && npm ci --omit=dev
 COPY src/ ./src/
 COPY client/ ./client/
 COPY --from=ui /app/src/ui/dist ./src/ui/dist

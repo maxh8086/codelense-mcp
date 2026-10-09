@@ -1,6 +1,6 @@
 # synaptree-mcp token benchmark
 
-Repo: synaptree-mcp (main, uncommitted changes to `src/tools.js` and `tests/unit/tools.test.js`), run 2026-10-09. Scope is the token cost of **reading and retrieving code details**, not indexing.
+Repo: synaptree-mcp (branch `compact-retrieval-output`), run 2026-10-09. Scope is the token cost of **reading and retrieving code details**, not indexing.
 
 Reproduce with the tooling in [`Benchmark/`](../Benchmark/README.md) (`tasks.json`, `capture_graph.mjs`, `measure.py`, `test_measure.py`). Raw outputs and the generated report are in `Benchmark/results/` (git-ignored).
 
@@ -14,39 +14,41 @@ Reproduce with the tooling in [`Benchmark/`](../Benchmark/README.md) (`tasks.jso
 
 ## Results (o200k_base tokens)
 
-| # | Task | Baseline | Graph | Saved | % saved |
-|---|------|---------:|------:|------:|--------:|
-| 1 | Find definition of `linkRefs` (`search_graph`) | 759 | 101 | 658 | 87% |
-| 2 | Callers of `indexRepository` (`trace_path` in, depth 1) | 935 | 87 | 848 | 91% |
-| 3 | Impact of `Db.replaceFile` (`trace_path` in, depth 3) | 5,813 | 568 | 5,245 | 90% |
-| 4 | Fetch one symbol's source (`get_code_snippet`) | 785 | 565 | 220 | 28% |
-| 5 | Concept search "savings" (`search_code`) | 2,752 | 1,655 | 1,097 | 40% |
-| 6 | List classes (`query_graph`) | 72 | 145 | -73 | -101% |
-| 7 | Architecture overview (`get_architecture`) | 9,809 | 454 | 9,355 | 95% |
-| 8 | What changed (`detect_changes`) vs `git status --short` | 29 | 69 | -40 | -138% |
-| | **Total** | **20,954** | **3,644** | **17,310** | **83%** |
+Before = JSON output (first run). After = compact default (git-routed `search_code`/`detect_changes`, TSV lists, slim snippet).
 
-The saving is concentrated in three tasks (architecture, impact analysis, callers: 15.4k of the 17.3k saved). Rows 4, 5, 6 and 8 are marginal or negative. The earlier chars/4 draft said 87%; the tokenizer says 83%, mostly because `search_code` (row 5) was under-estimated (70% -> 40%).
+| # | Task | Baseline | Before | After | Saved (after) | % saved |
+|---|------|---------:|-------:|------:|--------------:|--------:|
+| 1 | Find definition of `linkRefs` (`search_graph`) | 759 | 101 | 29 | 730 | 96% |
+| 2 | Callers of `indexRepository` (`trace_path`, depth 1) | 1,003 | 87 | 32 | 971 | 97% |
+| 3 | Impact of `Db.replaceFile` (`trace_path`, depth 3) | 5,886 | 568 | 170 | 5,716 | 97% |
+| 4 | Fetch one symbol's source (`get_code_snippet`) | 785 | 565 | 455 | 330 | 42% |
+| 5 | Concept search "savings" (`search_code`) | 2,777 | 1,655 | 292 | 2,485 | 89% |
+| 6 | List classes (`query_graph`) | 72 | 145 | 64 | 8 | 11% |
+| 7 | Architecture overview (`get_architecture`) | 9,836 | 454 | 454 | 9,382 | 95% |
+| 8 | What changed (`detect_changes`) vs `git status --short` | 45 | 69 | 44 | 1 | 2% |
+| | **Total** | **21,163** | **3,644** | **1,540** | **19,623** | **93%** |
 
-## Where the graph did NOT help or cost more
+Baselines were re-measured on the current tree (tasks 2, 3, 5, 8 moved slightly because the repo changed), so compare Before/After columns, not Before against the old baselines. The totals went from 83% to 93% saved. Rows 1-3 and 7 carry most of the saving.
 
-- **`detect_changes` (row 8)**: 69 tokens vs 29 for `git status --short`. The Docker server cannot run git (`git_dirty: null`), so it also lists files as "added" when the index is simply stale, including my own scratch files.
-- **Class list (row 6)**: 145 vs 72. One `git grep` answers it; the Cypher response is pretty-printed JSON with a key per field. The graph only wins on hierarchy depth.
-- **`search_code` (row 5)**: grep with JSON wrapping (5,485 characters for 19+ matches), includes `README.md` and `ui/` hits, and the 40% saving exists only because the baseline adds context windows around every hit.
-- **`get_code_snippet` (row 4)**: 28%. The returned JSON carries CRLF (`\r\n`) whitespace from the source file and extra fields.
+## Where the graph still does NOT help much
+
+- **`detect_changes` (row 8)**: now break-even with `git status --short` (44 vs 45). Its unique value is index drift and staleness, not size.
+- **Class list (row 6)**: 64 vs 72 for one grep; effectively a tie.
+- **`get_code_snippet` (row 4)**: 42%. The symbol source itself is most of the cost.
 - **Small repo**: 21 hand-written source files; a larger repo widens the gap.
 
-## Can we route it through git?
+## Compact retrieval output (implemented)
 
-Yes for part of it. The retrieval-side waste is in JSON framing and in tools that duplicate what git already answers. Recommendations, in order of value, not yet implemented:
+Tools above return compact text by default; pass `format: "json"` for the previous output. REST, the UI and the savings tracker still receive objects, only the MCP text layer is rendered.
 
-1. **`detect_changes` via git**: `git status --short` / `git diff --name-status <indexed_sha>` for the dirty list, and store the commit sha at index time so staleness is one comparison. Target is roughly 30 tokens instead of 69. Needs git available where the server runs (not present in the Docker image today; the host stdio server has it).
-2. **`search_code` via `git grep -n`**: respects `.gitignore`, skips the dist bundle, and returns compact `file:line:text` lines under a hit cap instead of pretty JSON. Expect close to the 2,752-token grep baseline for the match lines, and less with a smaller default context.
-3. **Compact output for flat lists** (`query_graph` rows, `search_graph`): TSV or `name<TAB>file` lines instead of an object per row. Row 6 would drop from 145 to about 70.
-4. **Slim `get_code_snippet` default**: normalise CRLF, return `file`, `lines`, `code` only; make neighbours opt-in. Row 4 would save about 45-50% instead of 28%.
-5. Keep the graph for what git cannot do: callers, impact depth, architecture. These already save 90%+.
+1. **`detect_changes` via git**: the index stores the commit sha, so staleness is one comparison. Output is `clean @<sha7>` or `A/M/D/G path` lines plus an "index is behind" hint. Markdown files (no extractor, never hashed) are no longer reported as added.
+2. **`search_code` via `git grep -n`**: `--untracked` keeps new files, gitignored files and `ui/` are excluded, output is `file:line:text`. Regexes using JS-only syntax (`d`, `(?:`, lookarounds) fall back to the JS RegExp walk, which is also the fallback when git is missing or the root is not a repo.
+3. **Flat lists as TSV with a header** (`search_graph`, `trace_path`, `query_graph`), with tab/newline escaping in cells.
+4. **Slim `get_code_snippet`**: file, lines and code only, CRLF normalised.
 
-Together these would move rows 4-8 to roughly break-even or better without touching the three rows that carry the result. I can implement 1-4 and re-run `Benchmark/` to measure; I have not changed any server code for this.
+Cons mitigated: the Docker image now installs git (`apk add git`) and runs git with `safe.directory=*` and `core.autocrlf=input` (a CRLF bind mount otherwise showed ~23 phantom dirty files); every git path falls back to the JS implementation when git returns an error; JSON clients opt in with `format: "json"`. 95 unit tests pass, including git routing, CRLF snippets and the MCP text layer.
+
+Keep the graph for what git cannot do: callers, impact depth, architecture.
 
 ## Comparison with the built-in estimate (`get_usage`)
 
@@ -55,9 +57,9 @@ Server counters after this session: baseline 222,048, response 2,235, **saved 21
 | | Baseline | Graph | Saved |
 |---|---:|---:|---:|
 | `get_usage` built-in (approx. same task set) | ~213,000 | ~2,200 | ~211,000 |
-| This benchmark, realistic (tokenizer) | 20,954 | 3,644 | 17,310 |
+| This benchmark, realistic (tokenizer) | 21,163 | 1,540 | 19,623 |
 
-The built-in "tokens saved" is about **12x the realistic figure**. Its percentage (99%) looks fine; its absolute number should not be quoted as real savings. The fix would be to exclude generated files and model grep+window reads rather than whole files. `src/savings.js` is unchanged.
+The built-in "tokens saved" is about **11x the realistic figure**. Its percentage (99%) looks fine; its absolute number should not be quoted as real savings. The fix would be to exclude generated files and model grep+window reads rather than whole files. `src/savings.js` is unchanged.
 
 ## Checks from the first version (fixed or verified)
 

@@ -23,7 +23,8 @@ export function createMcpServer(ctx) {
     server.registerTool(t.name, { description: t.description, inputSchema: t.schema.shape }, async (args) => {
       try {
         const out = await runTool(ctx, t.name, args, { track: true });
-        return { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] };
+        const text = t.compact && args?.format !== 'json' ? t.compact(out) : JSON.stringify(out, null, 2);
+        return { content: [{ type: 'text', text }] };
       } catch (e) {
         return { isError: true, content: [{ type: 'text', text: JSON.stringify({ error: e.message, status: e.status ?? 500, ...(e.extra ?? {}) }) }] };
       }
