@@ -14,17 +14,17 @@ Run 2026-10-09 on branch `compact-retrieval-output` (compact output default, git
 | 8 | What changed (clean tree) | 5 | 10 | -5 | -100% |
 | 9 | Find definition of `buildTools` | 680 | 27 | 653 | 96% |
 | 10 | Callers of `walk` (depth 2) | 3,272 | 130 | 3,142 | 96% |
-| 11 | Callees of `indexRepository` (depth 2) | 245 | 779 | -534 | -218% |
+| 11 | Callees of `indexRepository` (depth 2) | 5,237 | 779 | 4,458 | 85% |
 | 12 | Fetch `gitGrep` source | 866 | 241 | 625 | 72% |
 | 13 | Regex search `export async function` | 3,348 | 91 | 3,257 | 97% |
 | 14 | Search with no hits | 0 | 2 | -2 | n/a |
 | 15 | List functions in `compact.js` | 164 | 66 | 98 | 60% |
 | 16 | Concept search "tenant" | 14,667 | 1,633 | 13,034 | 89% |
-| | **Total** | **45,009** | **4,474** | **40,535** | **90%** |
+| | **Total** | **49,001** | **4,474** | **44,527** | **91%** |
 
 ## Where it did not help
 
-- **Callees (t11)**: 779 vs 245. A depth-2 outgoing trace lists every callee and their callees, including test fakes, while the baseline just reads one function body. Use depth 1, or read the snippet, when you only need what one function does.
+- **Callees (t11)**: the first run showed -218% (779 vs 245) because the baseline only read `indexRepository` itself, which cannot answer "what does it call, two hops deep". Without the feature an agent reads the function, then each callee (`indexFiles`, `walk`, `linkRefs`, `Db.*` ...): 5,237 tokens, so the graph saves 85%. The remaining weakness is precision: the trace includes same-name noise (`.set`, `.get`, `.find`, test fakes, UI files). Prefer depth 1 or a filtered path when only the real callees matter.
 - **Clean-tree `detect_changes` (t8)**: 10 vs 5 tokens; a few tokens of overhead (`clean @sha`) for a staleness check git status cannot give.
 - **No-hit search (t14)**: 2 tokens, effectively free. Baseline is 0 because grep prints nothing.
 - **Class list (t6)**: 64 vs 72, a tie.

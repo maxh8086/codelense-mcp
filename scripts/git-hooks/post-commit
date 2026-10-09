@@ -1,0 +1,15 @@
+#!/bin/sh
+# Re-index this checkout after every commit/merge so graph and code search never serve stale results.
+# Env: SYNAPTREE_URL (default http://127.0.0.1:8787), SYNAPTREE_PROJECT (default folder name),
+# SYNAPTREE_ROOT (path the server sees, default the checkout path; Docker: /workspace/<repo>),
+# SYNAPTREE_TOKEN (optional bearer).
+top=$(git rev-parse --show-toplevel) || exit 0
+case "$top" in *.git/worktrees/*|*/.claude/worktrees/*) exit 0 ;; esac  # index the main checkout only
+proj=${SYNAPTREE_PROJECT:-$(basename "$top")}
+root=${SYNAPTREE_ROOT:-$top}
+url=${SYNAPTREE_URL:-http://127.0.0.1:8787}
+auth=""; [ -n "$SYNAPTREE_TOKEN" ] && auth="Authorization: Bearer $SYNAPTREE_TOKEN"
+body="{\"project\":\"$proj\",\"root_path\":\"$root\"}"
+# background, silent, never blocks or fails the commit
+( curl -s -m 120 -X POST -H "Content-Type: application/json" ${auth:+-H "$auth"} -d "$body" "$url/api/v1/sync/auto" >/dev/null 2>&1 & ) 
+exit 0
