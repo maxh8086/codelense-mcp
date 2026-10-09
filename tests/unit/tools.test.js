@@ -107,3 +107,11 @@ test('trace_path default edge types include CALL_REFERENCE', async () => {
   await runTool(ctx, 'trace_path', { project: 'p', qualified_name: 'p.src.a.f', direction: 'in' });
   assert.match(calls.at(-1).cy, /\[r:[A-Z_|]*CALL_REFERENCE[A-Z_|]*\*/);
 });
+
+test('trace_path excludes test files unless include_tests', async () => {
+  const { ctx, calls } = makeCtx();
+  await runTool(ctx, 'trace_path', { project: 'p', qualified_name: 'p.src.a.f', direction: 'in' });
+  assert.equal(calls.at(-1).params.tests, false);
+  await runTool(ctx, 'trace_path', { project: 'p', qualified_name: 'p.src.a.f', direction: 'in', include_tests: true });
+  assert.equal(calls.at(-1).params.tests, true);
+});
