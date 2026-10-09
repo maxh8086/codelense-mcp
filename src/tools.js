@@ -61,7 +61,7 @@ async function nodeByQn(ctx, p, qn) {
 
 async function traceRows(ctx, p, qn, { direction = 'both', depth = 2, edge_types } = {}) {
   const d = Math.min(Math.max(parseInt(depth, 10) || 1, 1), 5);
-  const types = (edge_types?.length ? edge_types : ['CALLS', 'USAGE', 'IMPLEMENTS', 'INHERITS', 'USES_TYPE', 'IMPORTS']).map((e) => assertEdge(e)).join('|');
+  const types = (edge_types?.length ? edge_types : ['CALLS', 'CALL_REFERENCE', 'USAGE', 'IMPLEMENTS', 'INHERITS', 'USES_TYPE', 'IMPORTS']).map((e) => assertEdge(e)).join('|');
   const pat = direction === 'out' ? `-[r:${types}*1..${d}]->` : direction === 'in' ? `<-[r:${types}*1..${d}]-` : `-[r:${types}*1..${d}]-`;
   return ctx.db.run(
     `MATCH (s:${ROOT_LABEL} {user_id:$u, repo_name:$r, qualified_name:$q})
