@@ -7,6 +7,7 @@ import { ROOT_LABEL, NODE_LABELS, EDGE_TYPES, PRODUCED_EDGE_TYPES, assertEdge } 
 import { indexRepository, sha256, walk } from './indexer.js';
 import { estimateTokens } from './llm.js';
 import { savingsSummary } from './savings.js';
+import { summarizeEnabled, summarizeMissing } from './summarize.js';
 import { makeEmbedder } from './llm.js';
 import { DEFAULT_SYSTEM_PROMPT, renderPrompt } from './prompt.js';
 import { ERD_SYSTEM_PROMPT, buildPrompt, applyEnrichment } from './erd-ai.js';
@@ -90,6 +91,9 @@ export function buildTools() {
       if (!st?.isDirectory()) throw new HttpError(400, `root_path is not a directory: ${root}`);
       const t = tenant(ctx, a.project);
       const stats = await indexRepository(ctx.db, t, a.project, root, { force: a.force, grammarsDir: ctx.cfg.grammarsDir, embed: makeEmbedder(ctx.cfg, ctx.db) });
+      if (summarizeEnabled(ctx.cfg)) {
+        stats.summaries = await summarizeMissing(ctx, a.project, { limit: ctx.cfg.summarizeOnIndex.limit }).catch((e) => ({ error: e.message }));
+      }
       setMeta(ctx, a.project, { root, last_sync: Date.now() });
       ctx.store.audit({ event: 'index', user: t.user_id, project: a.project, ...stats, errors: undefined });
       return stats;
@@ -179,11 +183,11 @@ export function buildTools() {
       return { matches: out };
     });
 
-  add('get_code_snippet', 'Return the source of a symbol by qualified name (read from disk, read-only).', { project, qualified_name: z.string() },
+  add('get_code_snippet', 'Return the source of a symbol by qualified name (stored source first, disk as fallback; read-only).', { project, qualified_name: z.string() },
     async (ctx, a) => {
       const n = await nodeByQn(ctx, a.project, a.qualified_name);
       if (!n) throw new HttpError(404, 'symbol not found');
-      const code = n.file_path ? await readLines(rootOf(ctx, a.project), n.file_path, n.start_line ?? 1, n.end_line ?? (n.start_line ?? 1) + 60) : '';
+      const code = n.source || (n.file_path ? await readLines(rootOf(ctx, a.project), n.file_path, n.start_line ?? 1, n.end_line ?? (n.start_line ?? 1) + 60) : '');
       return { qualified_name: n.qualified_name, file_path: n.file_path, start_line: n.start_line, end_line: n.end_line, signature: n.signature, code };
     });
 
@@ -275,7 +279,7 @@ export function buildTools() {
       const edges = await ctx.db.run(`MATCH (a:${ROOT_LABEL} {user_id:$u, repo_name:$r})-[e]->(b:${ROOT_LABEL} {user_id:$u, repo_name:$r}) RETURN a.qualified_name AS \`from\`, b.qualified_name AS \`to\`, type(e) AS type, e.line AS line, e.ambiguous AS ambiguous`, p);
       return {
         format: 'synaptree-export/1', project: a.project,
-        nodes: nodes.map((x) => { const { user_id, repo_name, embedding, ...rest } = x.p; return { ...rest, label: x.l.find((l) => NODE_LABELS.includes(l)) ?? 'Function' }; }),
+        nodes: nodes.map((x) => { const { user_id, repo_name, embedding, source, ...rest } = x.p; return { ...rest, label: x.l.find((l) => NODE_LABELS.includes(l)) ?? 'Function' }; }),
         edges, annotations: ctx.store.get('annotations', {})[pkey(ctx, a.project)] ?? {},
       };
     });

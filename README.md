@@ -88,6 +88,21 @@ collides with another Neo4j on your machine. Use `NEO4J_URI` to point at Neo4j E
 
 ### Use it from an MCP client
 
+Claude Code plugin (talks to the Docker container, so run `docker compose up -d` first):
+
+```bash
+claude plugin marketplace add maxh8086/synaptree-mcp
+claude plugin install synaptree@synaptree-mcp
+```
+
+Codex (same Docker-backed stdio bridge):
+
+```bash
+codex mcp add synaptree -- docker exec -i synaptree-synaptree-1 node src/cli.js --stdio
+```
+
+Or run the server directly on the host:
+
 ```bash
 claude mcp add synaptree -- node /path/to/synaptree-mcp/src/cli.js --stdio
 codex mcp add synaptree -- node /path/to/synaptree-mcp/src/cli.js --stdio
@@ -171,6 +186,8 @@ Edge types: the linker and indexer currently produce `CONTAINS_FOLDER`, `CONTAIN
 `USES_TYPE` and `HANDLES`. The other names in the schema are reserved for future passes and are never
 written today; `get_graph_schema` lists them separately as `produced_edge_types` and
 `reserved_edge_types`, plus `populated_edge_types` for what your graph really contains.
+
+Stored source and summaries: each symbol node keeps a capped copy of its source (8 KB), so `get_code_snippet` works without the repo mounted (disk is the fallback) and `export_graph` leaves it out. Set `SYNAPTREE_SUMMARIZE_ON_INDEX=1` (off by default) to have a *local* LLM write a one-paragraph `summary` for functions, methods and classes without a docstring after each `index_repository`; `SYNAPTREE_SUMMARIZE_LIMIT` (default 25) caps symbols per run. Paid sources are never used for this.
 
 Embeddings (optional, `embeddings.url`): at most `embeddings.maxNodes` nodes (default 5000) are embedded,
 and a batch is dropped if the returned vectors do not match the index dimension, so a wrong model

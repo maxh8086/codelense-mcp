@@ -44,7 +44,7 @@ export async function extractSource(filePath, source, grammarsDir) {
 }
 
 // Index a set of files for one tenant. `files` are {rel, source}; unchanged sha256 values are skipped unless force.
-export async function indexFiles(db, t, project, files, { force = false, grammarsDir, embed } = {}) {
+export async function indexFiles(db, t, project, files, { force = false, grammarsDir, embed, maxSource = 8192 } = {}) {
   const known = force ? new Map() : await db.fileHashes(t);
   const stats = { indexed: 0, skipped: 0, failed: 0, errors: [] };
   const built = [];
@@ -54,7 +54,7 @@ export async function indexFiles(db, t, project, files, { force = false, grammar
     try {
       const x = ast ?? await extractSource(rel, source, grammarsDir);
       if (!x) { stats.skipped++; continue; }
-      const f = buildFile(project, rel, x, { lang: langForFile(rel)?.id ?? '' });
+      const f = buildFile(project, rel, x, { lang: langForFile(rel)?.id ?? '', source, maxSource });
       f.nodes.find((n) => n.label === 'File').sha256 = hash;
       await db.replaceFile(t, rel, f.nodes, f.edges);
       built.push(f);
