@@ -89,17 +89,18 @@ async function nodeByQn(ctx, p, qn) {
   return n?.n ?? null;
 }
 
-async function traceRows(ctx, p, qn, { direction = 'both', depth = 2, edge_types } = {}) {
+async function traceRows(ctx, p, qn, { direction = 'both', depth = 2, edge_types, include_tests = false } = {}) {
   const d = Math.min(Math.max(parseInt(depth, 10) || 1, 1), 5);
   const types = (edge_types?.length ? edge_types : ['CALLS', 'CALL_REFERENCE', 'USAGE', 'IMPLEMENTS', 'INHERITS', 'USES_TYPE', 'IMPORTS']).map((e) => assertEdge(e)).join('|');
   const pat = direction === 'out' ? `-[r:${types}*1..${d}]->` : direction === 'in' ? `<-[r:${types}*1..${d}]-` : `-[r:${types}*1..${d}]-`;
   return ctx.db.run(
     `MATCH (s:${ROOT_LABEL} {user_id:$u, repo_name:$r, qualified_name:$q})
      MATCH path = (s)${pat}(m:${ROOT_LABEL} {user_id:$u, repo_name:$r})
+     WHERE $tests OR m.file_path IS NULL OR NOT (m.file_path =~ '(?i)(^|.*/)(tests?|__tests__|spec)/.*|.*\\\\.(test|spec)\\\\.[a-z]+$')
      WITH m, min(length(path)) AS hops
      RETURN m.qualified_name AS qualified_name, m.name AS name, labels(m) AS labels, m.file_path AS file_path, m.start_line AS start_line, m.end_line AS end_line, hops
      ORDER BY hops, name LIMIT 200`,
-    { u: ctx.tenant.user_id, r: p, q: qn });
+    { u: ctx.tenant.user_id, r: p, q: qn, tests: !!include_tests });
 }
 
 async function listProjectRows(ctx) {
@@ -225,8 +226,8 @@ export function buildTools() {
       return { qualified_name: n.qualified_name, file_path: n.file_path, start_line: n.start_line, end_line: n.end_line, signature: n.signature, code: code.replace(/\r\n/g, '\n') };
     }, C.renderSnippet);
 
-  add('trace_path', 'Walk relationships from a symbol (callers/callees/usages) up to depth 5.',
-    { project, qualified_name: z.string(), direction: z.enum(['in', 'out', 'both']).optional(), depth: z.number().int().min(1).max(5).optional(), edge_types: z.array(z.string()).optional() },
+  add('trace_path', 'Graph walk from ONE symbol (qualified_name from search_graph). Pick params by question: WHO CALLS X / impact of changing X -> direction:"in", depth 1-3. WHAT DOES X CALL -> direction:"out", depth:1 (true callees; depth 2+ pulls in same-name noise such as .get/.set/.find because receiver calls resolve by name). Default depth is 2, direction both: use only for a quick neighbourhood. Test files are excluded unless include_tests:true. Not for reading code (use get_code_snippet), text/regex matches (use search_code) or counts/filters (use query_graph).',
+    { project, qualified_name: z.string(), direction: z.enum(['in', 'out', 'both']).optional(), depth: z.number().int().min(1).max(5).optional(), edge_types: z.array(z.string()).optional(), include_tests: z.boolean().optional() },
     async (ctx, a) => ({ nodes: await traceRows(ctx, a.project, a.qualified_name, a) }), C.renderTrace);
 
   add('query_graph', 'Run a READ-ONLY Cypher query. Must reference $user_id and $repo_name; write clauses are rejected with 403; max 500 rows.',

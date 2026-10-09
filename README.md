@@ -220,3 +220,7 @@ git config core.hooksPath scripts/git-hooks
 ```
 
 Set `SYNAPTREE_ROOT=/workspace/<repo>` when the server runs in Docker, and `SYNAPTREE_PROJECT`, `SYNAPTREE_URL`, `SYNAPTREE_TOKEN` as needed.
+
+**Agent swarms and worktrees.** The hook skips worktrees on purpose: each throwaway worktree would create an orphan project. Policy for LLM agents: the graph describes the main checkout (base branch, refreshed on every commit/merge there). Inside a worktree, use the graph for structure (`search_graph`, `trace_path`, `get_code_snippet`) and treat it as base-branch state; use `git diff` / `git grep` for your own uncommitted or branch-local changes. After a worktree branch merges, the post-merge hook in the main checkout re-indexes it.
+
+**Choosing `trace_path` parameters.** Callers / impact: `direction:"in"`, depth 1-3. True callees: `direction:"out"`, depth 1 (depth 2+ adds same-name noise). Test files are excluded unless `include_tests:true`.
