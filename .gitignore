@@ -7,3 +7,8 @@ data/
 .claude/
 demo-erd.db
 dist-client/
+
+.claude-plugin/
+.env.example
+.gitattributes
+.github/workflows/
