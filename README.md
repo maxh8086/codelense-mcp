@@ -9,6 +9,12 @@ agents can see your schema next to your code.
 **Read-only by design.** The MCP never changes your repository or your source databases. The only thing
 it writes is its own index (graph, annotations, ADRs, saved database schemas).
 
+## Benchmark
+
+Retrieving code through the graph used 4,953 tokens against 52,140 for `git grep` plus line-window reads across 16 tasks (90% fewer). Per-task charts, table and method: [Benchmark/README.md](Benchmark/README.md).
+
+![Total tokens: baseline vs synaptree](Benchmark/charts/hero.png)
+
 ## What problem does it solve?
 
 AI coding agents work blind on large codebases. To answer "what breaks if I change `verifyJwt`?"
@@ -44,6 +50,8 @@ database schema (SQL and NoSQL), so the agent also knows which tables a piece of
 ### Screenshots
 
 Live data from this repository's own index.
+
+[![Trace tab: call flow for runTool](docs/ui-trace.png)](docs/ui-trace.png)
 
 | Architecture | Sync |
 | --- | --- |
