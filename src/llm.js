@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { EMBEDDING_DIMS } from './constants.js';
 
 export const DEFAULT_SETTINGS = {
   provider: 'local', // local | api
@@ -143,7 +144,8 @@ export class Llm {
 export function makeEmbedder(cfg, db) {
   if (!cfg.embeddings?.url) return null;
   return async (t, built) => {
-    const rows = built.flatMap((f) => f.nodes).filter((n) => n.label !== 'Folder' && n.label !== 'Project' && n.label !== 'File');
+    const max = cfg.embeddings.maxNodes ?? 5000;
+    const rows = built.flatMap((f) => f.nodes).filter((n) => n.label !== 'Folder' && n.label !== 'Project' && n.label !== 'File').slice(0, max);
     for (let i = 0; i < rows.length; i += 64) {
       const part = rows.slice(i, i + 64);
       const res = await fetch(cfg.embeddings.url, {
@@ -153,6 +155,8 @@ export function makeEmbedder(cfg, db) {
       });
       if (!res.ok) return;
       const { data } = await res.json();
+      // Guard: skip the batch if the vectors do not match the index dimension (a wrong model would corrupt it).
+      if (!Array.isArray(data) || data.length !== part.length || data.some((d) => d.embedding?.length !== EMBEDDING_DIMS)) return;
       await db.run(
         `UNWIND $rows AS r MATCH (n:CodeNode {user_id:$u, repo_name:$r2, qualified_name:r.qn}) SET n.embedding = r.v`,
         { u: t.user_id, r2: t.repo_name, rows: part.map((n, j) => ({ qn: n.qualified_name, v: data[j].embedding })) }, { write: true });

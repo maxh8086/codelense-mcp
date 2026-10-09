@@ -8,9 +8,13 @@ const require = createRequire(import.meta.url);
 let ready = null;
 const languages = new Map();
 
-function wasmDir(extra) {
-  if (extra && fs.existsSync(extra)) return extra;
-  return path.join(path.dirname(require.resolve('tree-sitter-wasms/package.json')), 'out');
+const bundledDir = () => path.join(path.dirname(require.resolve('tree-sitter-wasms/package.json')), 'out');
+
+// A grammar in grammars_dir wins (newer or extra builds); anything missing falls back to the bundled set.
+function wasmFile(extra, name) {
+  const file = `tree-sitter-${name}.wasm`;
+  if (extra && fs.existsSync(path.join(extra, file))) return path.join(extra, file);
+  return path.join(bundledDir(), file);
 }
 
 export async function initParser() {
@@ -24,7 +28,7 @@ export async function parserFor(langCfg, grammarsDir) {
   await initParser();
   let lang = languages.get(langCfg.wasm);
   if (!lang) {
-    const file = path.join(wasmDir(grammarsDir), `tree-sitter-${langCfg.wasm}.wasm`);
+    const file = wasmFile(grammarsDir, langCfg.wasm);
     if (!fs.existsSync(file)) return null;
     lang = await Parser.Language.load(file);
     languages.set(langCfg.wasm, lang);

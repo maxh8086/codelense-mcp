@@ -3,7 +3,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { execFile } from 'node:child_process';
 import { z } from 'zod';
-import { ROOT_LABEL, NODE_LABELS, EDGE_TYPES, assertEdge } from './constants.js';
+import { ROOT_LABEL, NODE_LABELS, EDGE_TYPES, PRODUCED_EDGE_TYPES, assertEdge } from './constants.js';
 import { indexRepository, sha256, walk } from './indexer.js';
 import { estimateTokens } from './llm.js';
 import { makeEmbedder } from './llm.js';
@@ -211,7 +211,7 @@ export function buildTools() {
   add('get_graph_schema', 'Node labels and edge types the graph can contain, plus which are populated for this project.', { project: project.optional() },
     async (ctx, a) => {
       const used = a.project ? await ctx.db.run(`MATCH (:${ROOT_LABEL} {user_id:$u, repo_name:$r})-[e]->() RETURN DISTINCT type(e) AS t`, { u: ctx.tenant.user_id, r: a.project }) : [];
-      return { node_labels: NODE_LABELS, edge_types: EDGE_TYPES, populated_edge_types: used.map((x) => x.t) };
+      return { node_labels: NODE_LABELS, edge_types: EDGE_TYPES, produced_edge_types: PRODUCED_EDGE_TYPES, reserved_edge_types: EDGE_TYPES.filter((e) => !PRODUCED_EDGE_TYPES.includes(e)), populated_edge_types: used.map((x) => x.t) };
     });
 
   add('detect_changes', 'Compare files on disk with the index (sha256) and list added/modified/removed paths, plus git_dirty (working-tree changes per git, null outside a repo). Read-only.', { project },
@@ -266,6 +266,28 @@ export function buildTools() {
 
   add('get_annotations', 'Return all annotations for a project.', { project },
     async (ctx, a) => ({ annotations: ctx.store.get('annotations', {})[pkey(ctx, a.project)] ?? {} }));
+
+  add('export_graph', 'Export the graph of a project (nodes, edges, annotations) as JSON for backup or transfer. Read-only; embeddings are omitted.', { project },
+    async (ctx, a) => {
+      const p = { u: ctx.tenant.user_id, r: a.project };
+      const nodes = await ctx.db.run(`MATCH (n:${ROOT_LABEL} {user_id:$u, repo_name:$r}) RETURN properties(n) AS p, labels(n) AS l`, p);
+      const edges = await ctx.db.run(`MATCH (a:${ROOT_LABEL} {user_id:$u, repo_name:$r})-[e]->(b:${ROOT_LABEL} {user_id:$u, repo_name:$r}) RETURN a.qualified_name AS \`from\`, b.qualified_name AS \`to\`, type(e) AS type, e.line AS line, e.ambiguous AS ambiguous`, p);
+      return {
+        format: 'codelense-export/1', project: a.project,
+        nodes: nodes.map((x) => { const { user_id, repo_name, embedding, ...rest } = x.p; return { ...rest, label: x.l.find((l) => NODE_LABELS.includes(l)) ?? 'Function' }; }),
+        edges, annotations: ctx.store.get('annotations', {})[pkey(ctx, a.project)] ?? {},
+      };
+    });
+
+  add('import_graph', 'Import a codelense-export/1 document into a project (merges nodes, edges and annotations into the index; never touches the repo).',
+    { project, data: z.object({ format: z.literal('codelense-export/1'), nodes: z.array(z.record(z.any())), edges: z.array(z.record(z.any())), annotations: z.record(z.string()).optional() }) },
+    async (ctx, a) => {
+      for (const n of a.data.nodes) if (!NODE_LABELS.includes(n.label) || typeof n.qualified_name !== 'string') throw new HttpError(400, 'invalid node in import');
+      for (const e of a.data.edges) assertEdge(e.type);
+      await ctx.db.importGraph(tenant(ctx, a.project), a.data.nodes, a.data.edges);
+      if (a.data.annotations) ctx.store.update('annotations', (all) => { all[pkey(ctx, a.project)] = { ...(all[pkey(ctx, a.project)] ?? {}), ...a.data.annotations }; return all; });
+      return { imported: { nodes: a.data.nodes.length, edges: a.data.edges.length, annotations: Object.keys(a.data.annotations ?? {}).length } };
+    });
 
   const flowContext = async (ctx, a) => {
     const root = rootOf(ctx, a.project);

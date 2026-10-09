@@ -6,7 +6,6 @@ import path from 'node:path';
 import { runTool } from '../../src/mcp.js';
 import { Store } from '../../src/store.js';
 import { Llm } from '../../src/llm.js';
-import { listDirs } from '../../src/server.js';
 
 function makeCtx(nodes = 10) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cl-'));
@@ -101,13 +100,4 @@ test('store seals and opens secrets', () => {
   const sealed = ctx.store.seal('rg_secret');
   assert.notEqual(sealed, 'rg_secret');
   assert.equal(ctx.store.open(sealed), 'rg_secret');
-});
-
-test('listDirs confines browsing to workspace_root', async () => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ws-'));
-  fs.mkdirSync(path.join(root, 'a', '.git'), { recursive: true });
-  fs.mkdirSync(path.join(root, 'node_modules'));
-  const out = await listDirs(root, '');
-  assert.deepEqual(out.dirs.map((d) => [d.name, d.repo]), [['a', true]]);
-  await assert.rejects(listDirs(root, path.join(root, '..')), (e) => e.status === 403);
 });

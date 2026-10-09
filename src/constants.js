@@ -15,6 +15,13 @@ export const EDGE_TYPES = [
   'SEMANTICALLY_RELATED',
 ];
 
+// Edge types the indexer/linker actually emit today. The rest of EDGE_TYPES is the spec's closed
+// vocabulary, reserved for future analyzers (runtime traces, git history, embeddings) and accepted on import.
+export const PRODUCED_EDGE_TYPES = [
+  'CONTAINS_FOLDER', 'CONTAINS_FILE', 'DEFINES', 'DEFINES_METHOD', 'MEMBER_OF', 'IMPORTS', 'CALLS',
+  'CALL_REFERENCE', 'USAGE', 'IMPLEMENTS', 'INHERITS', 'USES_TYPE', 'HANDLES',
+];
+
 // Edge types the Pass 2 linker (re)computes from stored per-file references.
 export const LINK_EDGE_TYPES = [
   'IMPORTS', 'CALLS', 'CALL_REFERENCE', 'USAGE', 'IMPLEMENTS', 'INHERITS',

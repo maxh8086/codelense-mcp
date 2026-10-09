@@ -99,7 +99,11 @@ Run `codelense-client` next to your code. It watches the folder and posts change
 Indexing and graph: `index_repository`, `list_projects`, `index_status`, `snooze_project`,
 `delete_project`, `search_graph`, `search_code`, `get_code_snippet`, `trace_path`, `query_graph`
 (read-only, writes return 403), `get_architecture`, `get_graph_schema`, `detect_changes`,
-`manage_adr`, `ingest_traces`, `annotate_element`, `get_annotations`.
+`manage_adr`, `ingest_traces`, `annotate_element`, `get_annotations`, `export_graph`, `import_graph`.
+
+`export_graph` returns a project's nodes, edges and annotations as portable JSON
+(`codelense-export/1`; embeddings and tenant ids are stripped). `import_graph` loads that JSON into
+any project name, validating labels and edge types first. Use it to back up, move or share an index.
 
 LLM: `estimate_cost`, `ask_flow`, `summarize_symbol`, `get_llm_settings`, `set_llm_settings`,
 `get_usage`. Most calls arrive through MCP from the Claude or Codex chat. Guardrails apply only to a
@@ -122,6 +126,20 @@ expressions against a global symbol table; no live language servers are run. Cal
 ones are recorded as `USAGE`. Dynamic dispatch, reflection, macros and generated code can be
 missed or mislinked. Treat the graph as a fast, useful map rather than ground truth. Relationships
 inferred by name or by a local LLM in an ERD are marked `inferred_name` / `inferred_llm`, not declared.
+
+Edge types: the linker and indexer currently produce `CONTAINS_FOLDER`, `CONTAINS_FILE`, `DEFINES`,
+`DEFINES_METHOD`, `MEMBER_OF`, `IMPORTS`, `CALLS`, `CALL_REFERENCE`, `USAGE`, `IMPLEMENTS`, `INHERITS`,
+`USES_TYPE` and `HANDLES`. The other names in the schema are reserved for future passes and are never
+written today; `get_graph_schema` lists them separately as `produced_edge_types` and
+`reserved_edge_types`, plus `populated_edge_types` for what your graph really contains.
+
+Embeddings (optional, `embeddings.url`): at most `embeddings.maxNodes` nodes (default 5000) are embedded,
+and a batch is dropped if the returned vectors do not match the index dimension, so a wrong model
+cannot corrupt the vector index.
+
+Extra languages: set `CODELENSE_GRAMMARS_DIR` to a folder holding `tree-sitter-<name>.wasm` files. A
+grammar found there wins over the bundled one; anything missing falls back to the bundled set. A new
+language also needs an entry in `src/langs.js` describing its definition and call node types.
 
 Languages without a bundled Tree-sitter grammar (for example R, SQL, GraphQL, Protocol Buffers)
 get lightweight pattern-based extraction instead of a full parse. Grammars run as WASM

@@ -17,27 +17,6 @@ function safeEqual(a, b) {
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 }
 
-// Directory-name listing for the UI folder picker. Read-only, confined to workspace_root.
-export async function listDirs(workspaceRoot, requested) {
-  const root = await fs.realpath(path.resolve(workspaceRoot));
-  const want = requested ? path.resolve(requested) : root;
-  let real;
-  try { real = await fs.realpath(want); } catch { const e = new Error('path not found'); e.status = 404; throw e; }
-  const rel = path.relative(root, real);
-  if (rel.startsWith('..') || path.isAbsolute(rel)) { const e = new Error('path is outside workspace_root'); e.status = 403; throw e; }
-  const ents = await fs.readdir(real, { withFileTypes: true });
-  const dirs = [];
-  for (const d of ents) {
-    if (!d.isDirectory() || d.name.startsWith('.') && d.name !== '.git') continue;
-    if (d.name === '.git' || d.name === 'node_modules') continue;
-    const full = path.join(real, d.name);
-    const repo = await fs.stat(path.join(full, '.git')).then(() => true, () => false);
-    dirs.push({ name: d.name, path: full, repo });
-  }
-  dirs.sort((a, b) => a.name.localeCompare(b.name));
-  return { path: real, sep: path.sep, parent: real === root ? null : path.dirname(real), roots: [root], dirs };
-}
-
 export function createApp(ctx) {
   const app = express();
   app.use(express.json({ limit: '25mb' }));
@@ -118,7 +97,6 @@ export function createApp(ctx) {
   api.post('/erd/saved', tool('get_db_schema'));
   api.post('/erd/saved/delete', tool('delete_db_schema'));
   api.post('/erd/saved/table', tool('get_table_relationships'));
-  api.get('/fs/list',wrap(async (r) => listDirs(ctx.cfg.workspaceRoot ?? process.cwd(), r.query.path)));
 
   // Push-sync used by codelense-client: pre-parsed AST for one file.
   api.post('/sync', wrap(async (r) => {

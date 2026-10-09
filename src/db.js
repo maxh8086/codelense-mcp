@@ -136,6 +136,11 @@ export class Db {
       { u: t.user_id });
   }
 
+  async importGraph(t, nodes, edges) {
+    const s = this.driver.session({ database: this.database });
+    try { await s.executeWrite(async (tx) => { await this._writeNodes(tx, t, nodes); await this._writeEdges(tx, t, edges); }); } finally { await s.close(); }
+  }
+
   async writeEdges(t, edges) {
     const s = this.driver.session({ database: this.database });
     try { await s.executeWrite((tx) => this._writeEdges(tx, t, edges)); } finally { await s.close(); }
