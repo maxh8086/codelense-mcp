@@ -210,3 +210,13 @@ npm test      # node --test tests/unit/*.test.js
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
+
+#### Re-index on every commit
+
+`scripts/git-hooks/post-commit` and `post-merge` call `/api/v1/sync/auto` in the background, so the graph always matches HEAD. Enable once per clone:
+
+```bash
+git config core.hooksPath scripts/git-hooks
+```
+
+Set `SYNAPTREE_ROOT=/workspace/<repo>` when the server runs in Docker, and `SYNAPTREE_PROJECT`, `SYNAPTREE_URL`, `SYNAPTREE_TOKEN` as needed.
