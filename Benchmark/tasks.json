@@ -218,7 +218,7 @@
       "mode": "window",
       "ctx": 10,
       "grep": [
-        "walk(",
+        "walk\\(",
         "indexFiles|indexRepository"
       ],
       "paths": [
@@ -245,7 +245,7 @@
       "ctx": 10,
       "grep": [
         "async function indexRepository",
-        "function walk|async function indexFiles|function extractSource|function linkRefs|function buildFile|function resolveImports|class NameIndex|function sha256|replaceFile(|deleteFile(|fileHashes(|writeEdges(|nameIndex(|function langForFile"
+        "function walk|async function indexFiles|function extractSource|function linkRefs|function buildFile|function resolveImports|class NameIndex|function sha256|replaceFile\\(|deleteFile\\(|fileHashes\\(|writeEdges\\(|nameIndex\\(|function langForFile"
       ],
       "paths": [
         "src/*.js",

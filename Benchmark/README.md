@@ -15,4 +15,4 @@ Benchmark/.venv/Scripts/python.exe -m unittest discover -s Benchmark -p "test_*.
 - `results/` and `.venv/` are git-ignored.
 - Tools return compact text by default. `capture_graph.mjs` passes `format: 'json'` only where it needs to parse a result (name resolution).
 - `search_code` and `detect_changes` use git when available (the Docker image installs it) and fall back to a JS walk otherwise.
-- Published results: [RESULTS.md](RESULTS.md) (16 tasks, 49,001 baseline vs 4,474 graph tokens, 91% saved).
+- Published results: [RESULTS.md](RESULTS.md) (16 tasks, 52,140 baseline vs 4,953 graph tokens, 90% saved).

@@ -66,6 +66,17 @@ test('search_code git path finds matches in tracked and untracked files', async 
   assert.deepEqual(files, ['tracked.js', 'untracked.js']);
 });
 
+test('search_code git path matches lines in CRLF files', async (t) => {
+  if (!HAS_GIT) return t.skip('git not on PATH');
+  const repo = tmpDir('gr-crlf-');
+  git(repo, 'init', '-q');
+  fs.writeFileSync(path.join(repo, 'crlf.js'), 'const a = 1;\r\nconst needle = 2;\r\n');
+  const { ctx } = makeCtx();
+  setMeta(ctx, 'proj', { root: repo });
+  const out = await runTool(ctx, 'search_code', { project: 'proj', pattern: 'needle' });
+  assert.deepEqual(out.matches.map((m) => [m.file, m.line, m.text]), [['crlf.js', 2, 'const needle = 2;']]);
+});
+
 test('search_code with a JS-only pattern uses the JS fallback', async () => {
   const dir = tmpDir('gr-js-');
   fs.writeFileSync(path.join(dir, 'n.js'), 'const answer = 42;\n');
