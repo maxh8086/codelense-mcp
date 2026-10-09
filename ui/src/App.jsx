@@ -291,7 +291,7 @@ export default function App() {
     setProject(params.p);
     setLoading(true);
     setError('');
-    fetch(`/api/v1/trace?project=${encodeURIComponent(params.p)}&symbol=${encodeURIComponent(params.symbol)}`)
+    fetch(`/api/v1/trace?project=${encodeURIComponent(params.p)}&symbol=${encodeURIComponent(params.symbol)}&depth=${depth}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`backend answered ${r.status}`))))
       .then((t) => { setFull(t); setRootId(t.nodes[0]?.id); setLive(true); })
       .catch((e) => { setLive(false); setError(e instanceof TypeError ? 'backend unreachable' : e.message); })
@@ -302,6 +302,16 @@ export default function App() {
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
 
   const root = full.nodes.find((n) => n.id === rootId) ?? full.nodes[0] ?? { id: '', name: '(none)', file: '', kind: '', lane: '' };
+  useEffect(() => {
+    if (!live || !root.id) return;
+    const t = setTimeout(() => {
+      fetch(`/api/v1/trace?project=${encodeURIComponent(project)}&symbol=${encodeURIComponent(root.id)}&depth=${depth}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((t) => { if (t) setFull(t); })
+        .catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [depth, rootId, live, project]); // eslint-disable-line react-hooks/exhaustive-deps
   const matches = search
     ? full.nodes.filter((n) => n.name.toLowerCase().includes(search.toLowerCase()))
     : [];
