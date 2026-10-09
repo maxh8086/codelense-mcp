@@ -34,7 +34,7 @@ Run 2026-10-09 on branch `compact-retrieval-output` (compact output default, git
 
 - **t10 and t11 baselines were understated.** `git grep -E` rejected an unescaped `(` and `measure.py` swallowed the error, so the baseline silently covered fewer hits (t10 was 3,272, now 5,200). `measure.py` now fails on a `git grep` error and the patterns are escaped.
 - **`trace_path` now excludes test files by default**, which shrank the t3, t10 and t11 graph output (t11 779 to 604).
-- **`search_code` git path dropped lines in CRLF files** (each line ended in ``, which the line regex rejected). Fixed with a CRLF test. t5 and t13 grew because they now count those hits and the graph search covers the whole repo (including `Benchmark/`) while the baseline greps `src/` and `tests/`.
+- **`search_code` git path dropped lines in CRLF files** (each line ended in a carriage return, which the line regex rejected). Fixed with a CRLF test. t5 and t13 grew because they now count those hits and the graph search covers the whole repo (including `Benchmark/`) while the baseline greps `src/` and `tests/`.
 - t8 is shown for a clean tree; on a dirty tree it is 24 vs 23.
 
 ## Notes
