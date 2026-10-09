@@ -1,0 +1,39 @@
+name: client-binaries
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: windows-latest, label: windows-x64 }
+          - { os: macos-13, label: macos-x64 }          # Intel
+          - { os: macos-latest, label: macos-arm64 }    # Apple Silicon
+          - { os: ubuntu-latest, label: linux-x64 }     # generic glibc build
+          - { os: ubuntu-24.04-arm, label: linux-arm64 }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm ci
+      - run: npm run build:client
+      - name: Smoke test
+        run: ./dist-client/codelense-client-${{ matrix.label }}* --help
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codelense-client-${{ matrix.label }}
+          path: dist-client/codelense-client-*
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist-client/codelense-client-*

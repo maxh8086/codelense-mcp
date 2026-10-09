@@ -6,3 +6,4 @@ data/
 *.log
 .claude/
 demo-erd.db
+dist-client/

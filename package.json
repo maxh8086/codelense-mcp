@@ -14,12 +14,19 @@
     "client": "node client/codelense-client.js",
     "test": "node --test tests/unit/*.test.js",
     "test:unit": "node --test tests/unit/*.test.js",
-    "init-env": "node scripts/init-env.mjs"
+    "init-env": "node scripts/init-env.mjs",
+    "build:client": "node scripts/build-client.mjs"
   },
   "engines": {
     "node": ">=20"
   },
-  "keywords": ["mcp", "neo4j", "tree-sitter", "code-graph", "graphrag"],
+  "keywords": [
+    "mcp",
+    "neo4j",
+    "tree-sitter",
+    "code-graph",
+    "graphrag"
+  ],
   "author": "maxh8086",
   "license": "Apache-2.0",
   "dependencies": {
@@ -37,5 +44,14 @@
     "odbc": "^2.4.8",
     "oracledb": "^6.6.0",
     "pg": "^8.12.0"
+  },
+  "allowScripts": {
+    "oracledb": false,
+    "odbc": true,
+    "esbuild": true
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0",
+    "postject": "^1.0.0-alpha.6"
   }
 }
