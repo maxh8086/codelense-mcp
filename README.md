@@ -43,9 +43,13 @@ database schema (SQL and NoSQL), so the agent also knows which tables a piece of
 
 ## Architecture
 
-| High-level design | Low-level design |
-| --- | --- |
-| [![HLD](docs/hld.svg)](docs/hld.svg) | [![LLD](docs/lld.svg)](docs/lld.svg) |
+**High-level design**
+
+<img src="docs/hld.svg" alt="High-level design" width="100%">
+
+**Low-level design**
+
+<img src="docs/lld.svg" alt="Low-level design" width="100%">
 
 ### Screenshots
 
