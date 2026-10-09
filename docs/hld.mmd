@@ -1,0 +1,19 @@
+flowchart LR
+  C["<b>1. Clients</b><br/>AI agents (MCP)<br/>Admin web UI<br/>synaptree-client<br/>chokidar, 500 ms debounce"]
+  S["<b>2. Server (Node ESM)</b><br/>MCP tools: stdio + SSE /sse<br/>REST /api/v1 (sync, erd, trace)<br/>Optional bearer auth<br/>Read-only guard (403 on writes)<br/>Tokens-saved estimate (get_usage)"]
+  E["<b>3. Indexing engine</b><br/>Pass 1: Tree-sitter definitions (WASM)<br/>Pass 2: linker, heuristic CALLS / USAGE"]
+  G["<b>4. Graph DB</b><br/>Neo4j 5, bundled, swappable<br/>tenant: user_id, repo_name"]
+  R["<b>5. Read-only sources</b><br/>Your repo (never modified)<br/>SQL / ODBC / Oracle / Mongo<br/>schema only, no row values"]
+  L["<b>LLM (optional)</b><br/>Local or API endpoint<br/>Paid-API guardrails: 50k approve,<br/>100k strong warning, daily budget"]
+  C --> S --> E --> G
+  S --> R
+  L --> S
+  N["Read-only by design: only the synaptree index is written<br/>(graph, annotations, ADRs, saved schemas)"]
+  G ~~~ N
+  style N fill:none,stroke:none
+  style C stroke:#4d8dff,stroke-width:2px
+  style S stroke:#3ddc97,stroke-width:2px
+  style E stroke:#ffa94d,stroke-width:2px
+  style G stroke:#c77dff,stroke-width:2px
+  style R stroke:#ff6b6b,stroke-width:2px
+  style L stroke:#7fe0ff,stroke-width:2px

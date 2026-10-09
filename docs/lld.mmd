@@ -1,0 +1,15 @@
+flowchart LR
+  A["<b>Entry: src/cli.js</b><br/>serve | --stdio<br/>config.js (.env authoritative, bind 127.0.0.1)<br/>server.js (express: /sse, /api/v1, /ui)<br/>tools.js (MCP tool registry, zod)<br/>llm.js (estimate, approve, budget)<br/>savings.js (tokens-saved meter, MCP calls)"]
+  I["<b>Indexing pipeline</b><br/>discover files (language registry)<br/>extract.js: Pass 1 definitions<br/>linker.js: Pass 2 edges<br/>per-file purge + re-index (atomic)<br/>UNWIND batches of 500<br/>async embeddings (1536, cosine)"]
+  G["<b>Graph model (Neo4j)</b><br/>:CodeNode root label, 13 labels<br/>25 edge types (CALLS, IMPLEMENTS...)<br/>constraint unique_code_entity<br/>index code_embedding_idx (HNSW)<br/>db schemas: repo_name db:&lt;id&gt;<br/>:Table :Column HAS_COLUMN REFERENCES"]
+  D["<b>Database schema (ERD) flow</b><br/>connection (read-only user) -> introspect<br/>SQL: tables, columns, FKs; ODBC; Oracle<br/>Mongo: sample 50, depth 2, 60 fields<br/>relations: declared / inferred_name / inferred_llm<br/>schema-graph.js: modelToGraph -> replaceSchema<br/>auto-save on Sync up and Generate<br/>Delete: index only, needs authorization"]
+  F["<b>Safety and sync</b><br/>query_graph: read-only, writes -> 403<br/>repo and source DBs never modified<br/>delete_project: type name + 'yes, delete my repo'<br/>stale repo reminder: keep 3 / 6 months<br/>POST /api/v1/sync {user_id, repo_name,<br/>file_path, sha256, ast_json}<br/>synaptree-client: systemd / NSSM / launchd"]
+  A --> I --> G
+  D --> G
+  A ~~~ D
+  G ~~~ F
+  style A stroke:#3ddc97,stroke-width:2px
+  style I stroke:#ffa94d,stroke-width:2px
+  style G stroke:#c77dff,stroke-width:2px
+  style D stroke:#7fe0ff,stroke-width:2px
+  style F stroke:#ff6b6b,stroke-width:2px
