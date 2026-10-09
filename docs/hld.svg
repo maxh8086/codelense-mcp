@@ -1,60 +1,64 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" font-family="system-ui,Segoe UI,sans-serif" font-size="13">
-  <rect width="960" height="540" fill="#0c0d10"/>
-  <text x="480" y="32" text-anchor="middle" fill="#eceef3" font-size="18" font-weight="700">synaptree-mcp - High-level design</text>
-  <g id="clients">
-    <rect x="30" y="70" width="200" height="190" rx="12" fill="#14161b" stroke="#4d8dff"/>
-    <text x="130" y="95" text-anchor="middle" fill="#4d8dff" font-weight="700">1. Clients</text>
-    <text x="130" y="130" text-anchor="middle" fill="#eceef3">AI agents (MCP)</text>
-    <text x="130" y="158" text-anchor="middle" fill="#eceef3">Admin web UI</text>
-    <text x="130" y="186" text-anchor="middle" fill="#eceef3">synaptree-client</text>
-    <text x="130" y="206" text-anchor="middle" fill="#8a90a0" font-size="11">chokidar, 500 ms debounce</text>
-  </g>
-  <g id="server">
-    <rect x="290" y="70" width="230" height="190" rx="12" fill="#14161b" stroke="#3ddc97"/>
-    <text x="405" y="95" text-anchor="middle" fill="#3ddc97" font-weight="700">2. Server (Node ESM)</text>
-    <text x="405" y="130" text-anchor="middle" fill="#eceef3">MCP tools: stdio + SSE /sse</text>
-    <text x="405" y="158" text-anchor="middle" fill="#eceef3">REST /api/v1 (sync, erd, trace)</text>
-    <text x="405" y="186" text-anchor="middle" fill="#eceef3">Optional bearer auth</text>
-    <text x="405" y="214" text-anchor="middle" fill="#eceef3">Read-only guard (403 on writes)</text>
-    <text x="405" y="238" text-anchor="middle" fill="#8a90a0" font-size="11">Tokens-saved estimate (get_usage)</text>
-  </g>
-  <g id="engine">
-    <rect x="580" y="70" width="170" height="190" rx="12" fill="#14161b" stroke="#ffa94d"/>
-    <text x="665" y="95" text-anchor="middle" fill="#ffa94d" font-weight="700">3. Indexing engine</text>
-    <text x="665" y="130" text-anchor="middle" fill="#eceef3">Pass 1: Tree-sitter</text>
-    <text x="665" y="150" text-anchor="middle" fill="#8a90a0" font-size="11">definitions (WASM)</text>
-    <text x="665" y="182" text-anchor="middle" fill="#eceef3">Pass 2: linker</text>
-    <text x="665" y="202" text-anchor="middle" fill="#8a90a0" font-size="11">heuristic CALLS / USAGE</text>
-  </g>
-  <g id="graph">
-    <rect x="800" y="70" width="140" height="190" rx="12" fill="#14161b" stroke="#c77dff"/>
-    <text x="870" y="95" text-anchor="middle" fill="#c77dff" font-weight="700">4. Graph DB</text>
-    <text x="870" y="130" text-anchor="middle" fill="#eceef3">Neo4j 5</text>
-    <text x="870" y="150" text-anchor="middle" fill="#8a90a0" font-size="11">bundled, swappable</text>
-    <text x="870" y="182" text-anchor="middle" fill="#eceef3">tenant: user_id</text>
-    <text x="870" y="202" text-anchor="middle" fill="#eceef3">repo_name</text>
-  </g>
-  <g id="ext">
-    <rect x="290" y="320" width="230" height="150" rx="12" fill="#14161b" stroke="#ff6b6b"/>
-    <text x="405" y="345" text-anchor="middle" fill="#ff6b6b" font-weight="700">5. Read-only sources</text>
-    <text x="405" y="378" text-anchor="middle" fill="#eceef3">Your repo (never modified)</text>
-    <text x="405" y="404" text-anchor="middle" fill="#eceef3">SQL / ODBC / Oracle / Mongo</text>
-    <text x="405" y="430" text-anchor="middle" fill="#8a90a0" font-size="11">schema only, no row values</text>
-  </g>
-  <g id="llm">
-    <rect x="580" y="320" width="250" height="150" rx="12" fill="#14161b" stroke="#7fe0ff"/>
-    <text x="705" y="345" text-anchor="middle" fill="#7fe0ff" font-weight="700">LLM (optional)</text>
-    <text x="705" y="378" text-anchor="middle" fill="#eceef3">Local or API endpoint</text>
-    <text x="705" y="404" text-anchor="middle" fill="#eceef3">Paid-API guardrails: 50k approve,</text>
-    <text x="705" y="424" text-anchor="middle" fill="#eceef3">100k strong warning, daily budget</text>
-  </g>
-  <g stroke="#8a90a0" stroke-width="2" fill="none" marker-end="url(#a)">
-    <defs><marker id="a" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#8a90a0"/></marker></defs>
-    <path d="M230 165 H288"/>
-    <path d="M520 165 H578"/>
-    <path d="M750 165 H798"/>
-    <path d="M405 262 V318"/>
-    <path d="M580 395 H522"/>
-  </g>
-  <text x="480" y="510" text-anchor="middle" fill="#8a90a0" font-size="12">Read-only by design: only the synaptree index is written (graph, annotations, ADRs, saved schemas).</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="1200" height="700" font-family="system-ui,Segoe UI,sans-serif">
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a90a0"/></marker></defs>
+<rect width="1200" height="700" fill="#0c0d10"/>
+<text x="600" y="38" text-anchor="middle" fill="#eceef3" font-size="24" font-weight="700">synaptree-mcp - High-level design</text>
+<rect x="30" y="70" width="260" height="250" rx="10" fill="#14161b" stroke="#4d8dff" stroke-width="2"/>
+<text x="44" y="98" fill="#4d8dff" font-size="19" font-weight="700">Clients</text>
+<text x="44" y="128" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">MCP agents (stdio / SSE)</text>
+<text x="44" y="152" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">Admin UI (React, /ui)</text>
+<text x="44" y="176" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">REST callers</text>
+<text x="44" y="200" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">synaptree-client</text>
+<text x="44" y="224" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">  chokidar, 500ms</text>
+<text x="44" y="248" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">  POST /api/v1/sync</text>
+<rect x="350" y="70" width="300" height="250" rx="10" fill="#14161b" stroke="#3ddc97" stroke-width="2"/>
+<text x="364" y="98" fill="#3ddc97" font-size="19" font-weight="700">Server (Node 20 ESM)</text>
+<text x="364" y="128" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">express: /sse /messages</text>
+<text x="364" y="152" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">/api/v1  /ui  /healthz</text>
+<text x="364" y="176" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">tools.js: zod tool registry</text>
+<text x="364" y="200" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">guard: bearer token</text>
+<text x="364" y="224" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">read-only Cypher guard</text>
+<text x="364" y="248" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">savings.js token meter</text>
+<rect x="710" y="70" width="220" height="250" rx="10" fill="#14161b" stroke="#ffa94d" stroke-width="2"/>
+<text x="724" y="98" fill="#ffa94d" font-size="19" font-weight="700">Indexer</text>
+<text x="724" y="128" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">walk + sha256 diff</text>
+<text x="724" y="152" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">Pass 1 extract.js</text>
+<text x="724" y="176" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">  Tree-sitter WASM</text>
+<text x="724" y="200" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">Pass 2 linker.js</text>
+<text x="724" y="224" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">  CALLS / USAGE</text>
+<text x="724" y="248" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">UNWIND batch = 500</text>
+<rect x="990" y="70" width="180" height="250" rx="10" fill="#14161b" stroke="#c77dff" stroke-width="2"/>
+<text x="1004" y="98" fill="#c77dff" font-size="19" font-weight="700">Neo4j 5</text>
+<text x="1004" y="128" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">bolt :17687</text>
+<text x="1004" y="152" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">(:CodeNode) x13</text>
+<text x="1004" y="176" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">25 edge types</text>
+<text x="1004" y="200" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">unique constraint</text>
+<text x="1004" y="224" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">HNSW 1536d</text>
+<text x="1004" y="248" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">tenant: user_id</text>
+<text x="1004" y="272" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">  + repo_name</text>
+<rect x="350" y="400" width="300" height="200" rx="10" fill="#14161b" stroke="#ff6b6b" stroke-width="2"/>
+<text x="364" y="428" fill="#ff6b6b" font-size="19" font-weight="700">Read-only sources</text>
+<text x="364" y="458" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">repo files (never written)</text>
+<text x="364" y="482" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">Postgres / MySQL / Oracle</text>
+<text x="364" y="506" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">ODBC / SQLite / Mongo</text>
+<text x="364" y="530" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">schema only, no row data</text>
+<rect x="710" y="400" width="460" height="200" rx="10" fill="#14161b" stroke="#7fe0ff" stroke-width="2"/>
+<text x="724" y="428" fill="#7fe0ff" font-size="19" font-weight="700">LLM gateway (optional, llm.js)</text>
+<text x="724" y="458" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">provider: local | api</text>
+<text x="724" y="482" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">tier(tokens): auto / confirm / strong</text>
+<text x="724" y="506" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">50k confirm, 100k strong</text>
+<text x="724" y="530" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">daily budget 500k, 6 calls/min</text>
+<text x="724" y="554" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">approval_id handshake (300 s)</text>
+<path d="M290 195 H348" stroke="#8a90a0" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<text x="319" y="185" text-anchor="middle" fill="#c9cdd8" font-size="14">tool calls</text>
+<path d="M650 195 H708" stroke="#8a90a0" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<text x="679" y="185" text-anchor="middle" fill="#c9cdd8" font-size="14">index</text>
+<path d="M930 195 H988" stroke="#8a90a0" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<text x="959" y="185" text-anchor="middle" fill="#c9cdd8" font-size="14">Cypher</text>
+<path d="M500 322 V398" stroke="#8a90a0" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<text x="580" y="365" text-anchor="middle" fill="#c9cdd8" font-size="14">read files / DDL</text>
+<path d="M800 322 V398" stroke="#8a90a0" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<text x="850" y="365" text-anchor="middle" fill="#c9cdd8" font-size="14">ask_flow</text>
+<path d="M988 280 H652" stroke="#8a90a0" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<text x="820" y="300" text-anchor="middle" fill="#c9cdd8" font-size="14">queries (query_graph, trace_path)</text>
+<text x="600" y="650" text-anchor="middle" fill="#8a90a0" font-size="16">Read-only by design: only the synaptree index is written (graph, annotations, ADRs, saved schemas).</text>
 </svg>

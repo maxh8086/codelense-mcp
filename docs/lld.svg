@@ -1,62 +1,71 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" font-family="system-ui,Segoe UI,sans-serif" font-size="13">
-  <rect width="960" height="560" fill="#0c0d10"/>
-  <text x="480" y="32" text-anchor="middle" fill="#eceef3" font-size="18" font-weight="700">synaptree-mcp - Low-level design</text>
-  <g>
-    <rect x="30" y="60" width="280" height="200" rx="12" fill="#14161b" stroke="#3ddc97"/>
-    <text x="170" y="84" text-anchor="middle" fill="#3ddc97" font-weight="700">Entry: src/cli.js</text>
-    <text x="50" y="112" fill="#eceef3">serve | --stdio</text>
-    <text x="50" y="136" fill="#eceef3">config.js (.env authoritative, bind 127.0.0.1)</text>
-    <text x="50" y="160" fill="#eceef3">server.js (express: /sse, /api/v1, /ui)</text>
-    <text x="50" y="184" fill="#eceef3">tools.js (MCP tool registry, zod)</text>
-    <text x="50" y="208" fill="#eceef3">llm.js (estimate, approve, budget)</text>
-    <text x="50" y="232" fill="#eceef3">savings.js (tokens-saved meter, MCP calls)</text>
-  </g>
-  <g>
-    <rect x="340" y="60" width="280" height="200" rx="12" fill="#14161b" stroke="#ffa94d"/>
-    <text x="480" y="84" text-anchor="middle" fill="#ffa94d" font-weight="700">Indexing pipeline</text>
-    <text x="360" y="112" fill="#eceef3">discover files (language registry)</text>
-    <text x="360" y="136" fill="#eceef3">extract.js: Pass 1 definitions</text>
-    <text x="360" y="160" fill="#eceef3">linker.js: Pass 2 edges</text>
-    <text x="360" y="184" fill="#eceef3">per-file purge + re-index (atomic)</text>
-    <text x="360" y="208" fill="#eceef3">UNWIND batches of 500</text>
-    <text x="360" y="232" fill="#eceef3">async embeddings (1536, cosine)</text>
-  </g>
-  <g>
-    <rect x="650" y="60" width="280" height="200" rx="12" fill="#14161b" stroke="#c77dff"/>
-    <text x="790" y="84" text-anchor="middle" fill="#c77dff" font-weight="700">Graph model (Neo4j)</text>
-    <text x="670" y="112" fill="#eceef3">:CodeNode root label, 13 labels</text>
-    <text x="670" y="136" fill="#eceef3">25 edge types (CALLS, IMPLEMENTS...)</text>
-    <text x="670" y="160" fill="#eceef3">constraint unique_code_entity</text>
-    <text x="670" y="184" fill="#eceef3">index code_embedding_idx (HNSW)</text>
-    <text x="670" y="208" fill="#eceef3">db schemas: repo_name db:&lt;id&gt;</text>
-    <text x="670" y="232" fill="#eceef3">:Table :Column HAS_COLUMN REFERENCES</text>
-  </g>
-  <g>
-    <rect x="30" y="300" width="440" height="220" rx="12" fill="#14161b" stroke="#7fe0ff"/>
-    <text x="250" y="324" text-anchor="middle" fill="#7fe0ff" font-weight="700">Database schema (ERD) flow</text>
-    <text x="50" y="354" fill="#eceef3">connection (read-only user) -> introspect</text>
-    <text x="50" y="378" fill="#eceef3">SQL: tables, columns, FKs; ODBC; Oracle</text>
-    <text x="50" y="402" fill="#eceef3">Mongo: sample 50, depth 2, 60 fields</text>
-    <text x="50" y="426" fill="#eceef3">relations: declared / inferred_name / inferred_llm</text>
-    <text x="50" y="450" fill="#eceef3">schema-graph.js: modelToGraph -> replaceSchema</text>
-    <text x="50" y="474" fill="#eceef3">auto-save on Sync up and Generate</text>
-    <text x="50" y="498" fill="#eceef3">Delete: index only, needs authorization</text>
-  </g>
-  <g>
-    <rect x="500" y="300" width="430" height="220" rx="12" fill="#14161b" stroke="#ff6b6b"/>
-    <text x="715" y="324" text-anchor="middle" fill="#ff6b6b" font-weight="700">Safety and sync</text>
-    <text x="520" y="354" fill="#eceef3">query_graph: read-only, writes -> 403</text>
-    <text x="520" y="378" fill="#eceef3">repo and source DBs never modified</text>
-    <text x="520" y="402" fill="#eceef3">delete_project: type name + "yes, delete my repo"</text>
-    <text x="520" y="426" fill="#eceef3">stale repo reminder: keep 3 / 6 months</text>
-    <text x="520" y="450" fill="#eceef3">POST /api/v1/sync {user_id, repo_name,</text>
-    <text x="520" y="470" fill="#eceef3">  file_path, sha256, ast_json}</text>
-    <text x="520" y="494" fill="#eceef3">synaptree-client: systemd / NSSM / launchd</text>
-  </g>
-  <g stroke="#8a90a0" stroke-width="2" fill="none">
-    <defs><marker id="b" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#8a90a0"/></marker></defs>
-    <path d="M310 160 H338" marker-end="url(#b)"/>
-    <path d="M620 160 H648" marker-end="url(#b)"/>
-    <path d="M250 298 V262" marker-end="url(#b)"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900" font-family="system-ui,Segoe UI,sans-serif">
+<defs><marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#8a90a0"/></marker></defs>
+<rect width="1200" height="900" fill="#0c0d10"/>
+<text x="600" y="38" text-anchor="middle" fill="#eceef3" font-size="24" font-weight="700">synaptree-mcp - Low-level design</text>
+<rect x="30" y="70" width="360" height="300" rx="10" fill="#14161b" stroke="#3ddc97" stroke-width="2"/>
+<text x="44" y="98" fill="#3ddc97" font-size="19" font-weight="700">Entry and API</text>
+<text x="44" y="128" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">cli.js   serve | --stdio</text>
+<text x="44" y="152" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">config.js .env -&gt; loadConfig</text>
+<text x="44" y="176" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">server.js express routes</text>
+<text x="44" y="200" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">  GET /sse  POST /messages</text>
+<text x="44" y="224" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">  /api/v1/{graph,trace,chat,sync}</text>
+<text x="44" y="248" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">tools.js  add(name,schema,fn)</text>
+<text x="44" y="272" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">  runTool -&gt; zod -&gt; handler</text>
+<text x="44" y="296" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">mcp.js   MCP SDK bridge</text>
+<text x="44" y="320" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">savings.js baseline vs reply</text>
+<rect x="420" y="70" width="360" height="300" rx="10" fill="#14161b" stroke="#ffa94d" stroke-width="2"/>
+<text x="434" y="98" fill="#ffa94d" font-size="19" font-weight="700">Indexing pipeline</text>
+<text x="434" y="128" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">indexer.walk(root, ignore)</text>
+<text x="434" y="152" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">sha256 -&gt; skip unchanged</text>
+<text x="434" y="176" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">parser.js  load grammar WASM</text>
+<text x="434" y="200" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">extract.extractTree(tree,src)</text>
+<text x="434" y="224" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">  defs, imports, call refs</text>
+<text x="434" y="248" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">linker.buildFile -&gt; nodes</text>
+<text x="434" y="272" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">linker.NameIndex(name-&gt;qn)</text>
+<text x="434" y="296" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">linker.linkRefs(pending)</text>
+<text x="434" y="320" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">  1 match: CALLS, n&gt;1: USAGE</text>
+<rect x="810" y="70" width="360" height="300" rx="10" fill="#14161b" stroke="#c77dff" stroke-width="2"/>
+<text x="824" y="98" fill="#c77dff" font-size="19" font-weight="700">Graph store (db.js)</text>
+<text x="824" y="128" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">session per tenant</text>
+<text x="824" y="152" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">purge(file) then write</text>
+<text x="824" y="176" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">UNWIND $rows (500/batch)</text>
+<text x="824" y="200" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">MERGE (:CodeNode {qn,user_id,</text>
+<text x="824" y="224" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">  repo_name}) SET labels</text>
+<text x="824" y="248" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">MERGE edges by type</text>
+<text x="824" y="272" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">constraint unique_code_entity</text>
+<text x="824" y="296" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">index code_embedding_idx</text>
+<text x="824" y="320" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">traceRows: var-length path,</text>
+<text x="824" y="344" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">  ORDER BY hops LIMIT 200</text>
+<rect x="30" y="410" width="360" height="230" rx="10" fill="#14161b" stroke="#7fe0ff" stroke-width="2"/>
+<text x="44" y="438" fill="#7fe0ff" font-size="19" font-weight="700">Query tools</text>
+<text x="44" y="468" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">search_graph  fulltext + label</text>
+<text x="44" y="492" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">search_code   regex on disk</text>
+<text x="44" y="516" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">get_code_snippet stored src</text>
+<text x="44" y="540" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">trace_path    in/out/both 1-5</text>
+<text x="44" y="564" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">query_graph   RO Cypher, 500 rows</text>
+<text x="44" y="588" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">get_architecture counts, folders</text>
+<rect x="420" y="410" width="360" height="230" rx="10" fill="#14161b" stroke="#ff6b6b" stroke-width="2"/>
+<text x="434" y="438" fill="#ff6b6b" font-size="19" font-weight="700">Safety</text>
+<text x="434" y="468" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">write clause -&gt; HttpError 403</text>
+<text x="434" y="492" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">$user_id/$repo_name required</text>
+<text x="434" y="516" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">delete_project: name +</text>
+<text x="434" y="540" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">  'yes, delete my repo'</text>
+<text x="434" y="564" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">bind 127.0.0.1, bearer token</text>
+<text x="434" y="588" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">repo + source DBs never written</text>
+<rect x="810" y="410" width="360" height="230" rx="10" fill="#14161b" stroke="#4d8dff" stroke-width="2"/>
+<text x="824" y="438" fill="#4d8dff" font-size="19" font-weight="700">LLM + ERD</text>
+<text x="824" y="468" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">llm.gate(scope,tokens,args)</text>
+<text x="824" y="492" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">complete() local | api</text>
+<text x="824" y="516" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">erd.js introspect read-only</text>
+<text x="824" y="540" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">erd-ai.js infer relations</text>
+<text x="824" y="564" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">schema-graph.modelToGraph</text>
+<text x="824" y="588" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">  repo_name = db:&lt;id&gt;</text>
+<rect x="30" y="680" width="1140" height="170" rx="10" fill="#14161b" stroke="#8a90a0" stroke-width="2"/>
+<text x="44" y="708" fill="#8a90a0" font-size="19" font-weight="700">Write path of one file (client or index_repository)</text>
+<text x="44" y="738" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">write: sha256 changed? -&gt; extractTree -&gt; buildFile -&gt; linkRefs -&gt; purge -&gt; UNWIND MERGE nodes, edges</text>
+<text x="44" y="762" fill="#eceef3" font-size="16" font-family="ui-monospace,Consolas,monospace">read: /trace -&gt; nodeByQn -&gt; traceRows(depth&lt;=5, no tests) -&gt; lanes -&gt; {nodes, edges&lt;=1000}</text>
+<path d="M390 220 H418" stroke="#8a90a0" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<path d="M780 220 H808" stroke="#8a90a0" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<path d="M990 372 V408" stroke="#8a90a0" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
+<path d="M210 372 V408" stroke="#8a90a0" stroke-width="2.5" fill="none" marker-end="url(#a)"/>
 </svg>

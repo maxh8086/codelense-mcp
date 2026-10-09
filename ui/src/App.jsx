@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ReactFlow, Background, Controls, MiniMap, Handle, Position,
   BaseEdge, EdgeLabelRenderer, getSmoothStepPath, MarkerType, ControlButton, useReactFlow,
@@ -248,7 +248,21 @@ function subgraph(trace, rootId, depth, dir, cap, collapsed) {
 }
 
 export default function App() {
-  const [full, setFull] = useState(START);
+  const [baseFull, setFull] = useState(START);
+  // Depth 4-5 loads in rings: depth 3 comes from /trace, deeper rings are fetched per visible frontier (see loadFrontier).
+  const [extra, setExtra] = useState({ nodes: [], edges: [], expanded: [], rings: 0 });
+  const full = useMemo(() => {
+    if (!extra.nodes.length) return baseFull;
+    const ids = new Set(baseFull.nodes.map((n) => n.id));
+    const keys = new Set(baseFull.edges.map((e) => `${e.from}>${e.to}>${e.type}`));
+    return {
+      ...baseFull,
+      nodes: [...baseFull.nodes, ...extra.nodes.filter((n) => !ids.has(n.id))],
+      edges: [...baseFull.edges, ...extra.edges.filter((e) => !keys.has(`${e.from}>${e.to}>${e.type}`))],
+    };
+  }, [baseFull, extra]);
+  const rfRef = useRef(null);
+  const busy = useRef(false);
   const [live, setLive] = useState(false);
   const [selected, setSelected] = useState(null);
   const [selEdge, setSelEdge] = useState(null);
@@ -286,15 +300,29 @@ export default function App() {
     return { p: q.get('project'), symbol: q.get('symbol') };
   }, []);
   const loadTrace = () => {
-    if (params.p && !params.symbol) { setProject(params.p); setLive(true); return; }
-    if (!params.p || !params.symbol) return;
-    setProject(params.p);
+    // no ?project=: ask the backend which repos exist and open the first one; the demo only shows when unreachable
+    const first = params.p ? Promise.resolve(params.p) : fetch('/api/v1/projects').then((r) => (r.ok ? r.json() : Promise.reject())).then((d) => (d.projects ?? [])[0]?.name).catch(() => null);
+    first.then((p0) => {
+    if (!p0) return;
+    setProject(p0);
     setLoading(true);
     setError('');
-    fetch(`/api/v1/trace?project=${encodeURIComponent(params.p)}&symbol=${encodeURIComponent(params.symbol)}`)
+    fetch(`/api/v1/trace?project=${encodeURIComponent(p0)}&symbol=${encodeURIComponent(params.symbol ?? '')}&depth=${Math.min(depth, 3)}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`backend answered ${r.status}`))))
       .then((t) => { setFull(t); setRootId(t.nodes[0]?.id); setLive(true); })
       .catch((e) => { setLive(false); setError(e instanceof TypeError ? 'backend unreachable' : e.message); })
+      .finally(() => setLoading(false));
+    });
+  };
+  const switchProject = (name) => {
+    setProject(name);
+    if (!live) return;
+    setLoading(true);
+    setError('');
+    fetch(`/api/v1/trace?project=${encodeURIComponent(name)}&symbol=&depth=${Math.min(depth, 3)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`${name}: backend answered ${r.status}`))))
+      .then((t) => { setFull(t); setRootId(t.nodes[0]?.id); })
+      .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
   useEffect(loadTrace, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -302,12 +330,70 @@ export default function App() {
   useEffect(() => { document.documentElement.dataset.theme = theme; }, [theme]);
 
   const root = full.nodes.find((n) => n.id === rootId) ?? full.nodes[0] ?? { id: '', name: '(none)', file: '', kind: '', lane: '' };
+  useEffect(() => {
+    if (!live || !root.id) return;
+    const t = setTimeout(() => {
+      fetch(`/api/v1/trace?project=${encodeURIComponent(project)}&symbol=${encodeURIComponent(root.id)}&depth=${Math.min(depth, 3)}`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((t) => { if (t) setFull(t); })
+        .catch(() => {});
+    }, 250);
+    return () => clearTimeout(t);
+  }, [Math.min(depth, 3), rootId, live, project]);
+  useEffect(() => { setExtra({ nodes: [], edges: [], expanded: [], rings: 0 }); }, [rootId, project, dir, depth < 4]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch the next ring around the frontier nodes currently inside the viewport (max 40 per phase).
+  const loadFrontier = () => {
+    const rf = rfRef.current;
+    if (!live || depth < 4 || !rf || busy.current) return;
+    const level = 3 + extra.rings;
+    if (level >= depth) return;
+    const dist = new Map([[root.id, 0]]);
+    let fr = [root.id];
+    for (let d = 1; d <= level && fr.length; d++) {
+      const nx = [];
+      const cur = new Set(fr);
+      for (const e of full.edges) {
+        if (dir !== 'callers' && cur.has(e.from) && !dist.has(e.to)) { dist.set(e.to, d); nx.push(e.to); }
+        if (dir !== 'callees' && cur.has(e.to) && !dist.has(e.from)) { dist.set(e.from, d); nx.push(e.from); }
+      }
+      fr = nx;
+    }
+    const done = new Set(extra.expanded);
+    const ring = [...dist].filter(([id, d]) => d === level && !done.has(id)).map(([id]) => id);
+    const wrap = document.querySelector('.flowwrap');
+    const { x, y, zoom } = rf.getViewport();
+    const w = wrap?.clientWidth ?? 1000, h = wrap?.clientHeight ?? 600;
+    const pos = new Map(rf.getNodes().map((n) => [n.id, n.position]));
+    const seen = (id) => { const q = pos.get(id); return !q || (q.x * zoom + x > -200 && q.x * zoom + x < w && q.y * zoom + y > -100 && q.y * zoom + y < h); };
+    const ids = ring.filter(seen).slice(0, 40);
+    if (!ids.length) {
+      if (!ring.length) setExtra((e) => ({ ...e, rings: e.rings + 1 }));
+      return;
+    }
+    busy.current = true;
+    fetch(`/api/v1/expand?project=${encodeURIComponent(project)}&ids=${encodeURIComponent(ids.join(','))}&dir=${dir}&limit=60`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((t) => {
+        setExtra((e) => {
+          const expanded = [...e.expanded, ...ids];
+          const left = ring.filter((id) => !expanded.includes(id)).length;
+          return { nodes: [...e.nodes, ...(t?.nodes ?? [])], edges: [...e.edges, ...(t?.edges ?? [])], expanded, rings: left ? e.rings : e.rings + 1 };
+        });
+      })
+      .catch(() => {})
+      .finally(() => { busy.current = false; });
+  };
+  const loadRef = useRef(loadFrontier);
+  loadRef.current = loadFrontier;
+  // Re-run after every merge/depth change; terminates when nothing visible is left to expand.
+  useEffect(() => { if (depth >= 4) { const t = setTimeout(() => loadRef.current(), 400); return () => clearTimeout(t); } }, [depth, extra, rootId, live, full.nodes.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const matches = search
     ? full.nodes.filter((n) => n.name.toLowerCase().includes(search.toLowerCase()))
     : [];
   const types = useMemo(() => [...new Set(full.edges.map((e) => e.type))], [full]);
   const trace = useMemo(() => {
-    const sg = subgraph(full, root.id, depth, dir, showAll ? Infinity : NODE_CAP, collapsed);
+    const sg = subgraph(full, root.id, depth, dir, showAll || depth >= 4 ? Infinity : NODE_CAP, collapsed);
     return { ...sg, edges: sg.edges.filter((e) => !hidden.has(e.type)), title: `Trace · ${root.name}`, rootId: root.id };
   }, [full, root, depth, dir, hidden, showAll, collapsed]);
   const copyMermaid = async () => {
@@ -338,7 +424,7 @@ export default function App() {
     <div className="app">
       <header>
         <b className="brand">synaptree<span>-mcp</span></b>
-        <select value={project} onChange={(e) => setProject(e.target.value)}>
+        <select value={project} onChange={(e) => switchProject(e.target.value)}>
           {repos.length === 0 && <option value="">no repositories</option>}
           {repos.map((r) => <option key={r.project} value={r.project}>{r.project}</option>)}
         </select>
@@ -447,7 +533,9 @@ export default function App() {
               else if (e.key === 'r' || e.key === 'R') pick(id);
             }}
             onPaneClick={clearSel}
-            nodesConnectable={false} fitView fitViewOptions={{ padding: 0.12 }} minZoom={0.2}
+            onInit={(i) => { rfRef.current = i; if (depth >= 4) setTimeout(() => { const r = i.getNode(root.id); i.setCenter((r?.position.x ?? 0) + 100, (r?.position.y ?? 0) + 40, { zoom: 1 }); }, 50); }}
+            onMoveEnd={() => loadRef.current()}
+            nodesConnectable={false} fitView={depth < 4} fitViewOptions={{ padding: 0.12 }} minZoom={0.2}
             colorMode={theme}
             proOptions={{ hideAttribution: true }}
           >

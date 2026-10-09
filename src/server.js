@@ -9,6 +9,8 @@ import { indexFiles } from './indexer.js';
 import { setMeta } from './tools.js';
 
 // Edges that describe runtime flow; structural edges (DEFINES, MEMBER_OF…) would only clutter a trace.
+const laneOf = (f = '') => (/auth|session|guard|middleware/i.test(f) ? 'CONTROL' : /db|repo|store|model|schema|cache/i.test(f) ? 'PERSISTENCE' : /log|metric|audit|trace/i.test(f) ? 'OBSERVABILITY' : 'ENTRYPOINT');
+const kindOf = (labels = []) => labels.find((l) => l !== 'CodeNode') ?? 'Function';
 const FLOW_EDGES = ['CALLS', 'CALL_REFERENCE', 'USAGE', 'IMPLEMENTS', 'INHERITS', 'USES_TYPE'];
 const HERE =path.dirname(fileURLToPath(import.meta.url));
 
@@ -50,16 +52,24 @@ export function createApp(ctx) {
   // `symbol` may be a qualified name or a plain name; the first match is the root.
   api.get('/trace', wrap(async (r) => {
     const { project, symbol, qualified_name } = r.query;
-    const want = qualified_name ?? symbol;
-    if (!project || !want) throw Object.assign(new Error('project and symbol are required'), { status: 400 });
+    if (!project) throw Object.assign(new Error('project is required'), { status: 400 });
     const u = ctx.tenant.user_id;
+    let want = qualified_name ?? symbol;
+    if (!want) { // no symbol given: default to the most-connected non-test callable in the project
+      const [top] = await ctx.db.run(
+        `MATCH (s:CodeNode {user_id:$u, repo_name:$r})-[e]-(:CodeNode {user_id:$u, repo_name:$r})
+         WHERE (s:Function OR s:Method) AND type(e) IN $types
+           AND (s.file_path IS NULL OR NOT (s.file_path =~ '(?i)(^|.*/)(tests?|__tests__|spec)/.*|.*\.(test|spec)\.[a-z]+$'))
+         RETURN s.qualified_name AS qn, count(e) AS deg ORDER BY deg DESC LIMIT 1`,
+        { u, r: project, types: FLOW_EDGES });
+      if (!top) throw Object.assign(new Error(`no symbols indexed in ${project}`), { status: 404 });
+      want = top.qn;
+    }
     const [start] = await ctx.db.run(
       'MATCH (s:CodeNode {user_id:$u, repo_name:$r}) WHERE s.qualified_name = $q OR s.name = $q RETURN s.qualified_name AS qn, s.name AS name, labels(s) AS labels, s.file_path AS file ORDER BY s.qualified_name = $q DESC LIMIT 1',
       { u, r: project, q: want });
     if (!start) throw Object.assign(new Error(`symbol “${want}” not found in ${project}`), { status: 404 });
     const near = (await runTool(ctx, 'trace_path', { project, qualified_name: start.qn, edge_types: FLOW_EDGES, depth: Math.min(num(r.query.depth) ?? 2, 5) })).nodes;
-    const laneOf = (f = '') => (/auth|session|guard|middleware/i.test(f) ? 'CONTROL' : /db|repo|store|model|schema|cache/i.test(f) ? 'PERSISTENCE' : /log|metric|audit|trace/i.test(f) ? 'OBSERVABILITY' : 'ENTRYPOINT');
-    const kindOf = (labels = []) => labels.find((l) => l !== 'CodeNode') ?? 'Function';
     const nodes = [start, ...near.filter((n) => n.qualified_name !== start.qn && !n.labels?.includes('File'))].map((n) => {
       const qn = n.qn ?? n.qualified_name; const file = n.file ?? n.file_path ?? '';
       return { id: qn, name: n.name, file, kind: kindOf(n.labels), lane: laneOf(file) };
@@ -69,6 +79,30 @@ export function createApp(ctx) {
       'MATCH (a:CodeNode {user_id:$u, repo_name:$r})-[e]->(b:CodeNode {user_id:$u, repo_name:$r}) WHERE a.qualified_name IN $ids AND b.qualified_name IN $ids AND type(e) IN $types RETURN a.qualified_name AS from, b.qualified_name AS to, type(e) AS type LIMIT 1000',
       { u, r: project, ids, types: FLOW_EDGES });
     return { nodes, edges: rows };
+  }));
+  // One-hop frontier expansion for the UI's progressive depth 4-5 loading:
+  // neighbours of `ids` (comma separated qualified names), at most `limit` new nodes, plus the edges among all of them.
+  api.get('/expand', wrap(async (r) => {
+    const { project } = r.query;
+    const ids = String(r.query.ids ?? '').split(',').filter(Boolean).slice(0, 60);
+    if (!project || !ids.length) throw Object.assign(new Error('project and ids are required'), { status: 400 });
+    const limit = Math.min(num(r.query.limit) ?? 40, 100);
+    const dir = r.query.dir === 'callers' ? 'in' : r.query.dir === 'callees' ? 'out' : 'both';
+    const pat = dir === 'out' ? '-[e]->' : dir === 'in' ? '<-[e]-' : '-[e]-';
+    const u = ctx.tenant.user_id;
+    const found = await ctx.db.run(
+      `MATCH (a:CodeNode {user_id:$u, repo_name:$r})${pat}(b:CodeNode {user_id:$u, repo_name:$r})
+       WHERE a.qualified_name IN $ids AND type(e) IN $types AND NOT b:File AND NOT b.qualified_name IN $ids
+         AND (b.file_path IS NULL OR NOT (b.file_path =~ '(?i)(^|.*/)(tests?|__tests__|spec)/.*|.*\.(test|spec)\.[a-z]+$'))
+       RETURN DISTINCT b.qualified_name AS qn, b.name AS name, labels(b) AS labels, b.file_path AS file
+       ORDER BY b.name LIMIT toInteger($limit)`,
+      { u, r: project, ids, types: FLOW_EDGES, limit });
+    const nodes = found.map((n) => ({ id: n.qn, name: n.name, file: n.file ?? '', kind: kindOf(n.labels), lane: laneOf(n.file ?? '') }));
+    const all = [...new Set([...ids, ...nodes.map((n) => n.id)])];
+    const edges = await ctx.db.run(
+      'MATCH (a:CodeNode {user_id:$u, repo_name:$r})-[e]->(b:CodeNode {user_id:$u, repo_name:$r}) WHERE a.qualified_name IN $all AND b.qualified_name IN $all AND type(e) IN $types RETURN a.qualified_name AS from, b.qualified_name AS to, type(e) AS type LIMIT 1000',
+      { u, r: project, all, types: FLOW_EDGES });
+    return { nodes, edges };
   }));
   api.post('/adr', tool('manage_adr'));
   api.post('/query', tool('query_graph'));

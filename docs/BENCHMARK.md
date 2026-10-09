@@ -73,3 +73,39 @@ The built-in "tokens saved" is about **11x the realistic figure**. Its percentag
 ## Not covered
 
 Window size (+/-10 lines) and the two-hop impact follow-up are assumptions about agent behaviour; a different agent could land between this baseline and a whole-file read (earlier chars/4 whole-file total: 103,568). `IMPLEMENTS` edges and `ask_flow`/`summarize_symbol` were not measured. Throwaway projects `hier-fixture` and `synaptree-bench` remain in the index; removing them needs `delete_project` with a typed confirmation.
+
+## Performance (latency)
+
+Measured with [`Benchmark/perf.mjs`](../Benchmark/perf.mjs) over SSE against the Docker server (Neo4j 5 on the same host), 2026-10-10. Single run per cell, warm server.
+
+```
+node Benchmark/perf.mjs http://127.0.0.1:8787 synaptree-mcp bench-mid=/workspace/<repo> small=/workspace/<repo2>
+```
+
+Repos: `synaptree-mcp` (587 nodes, 1,961 edges), a mid-size Python repo (133 files, 2,054 nodes, 6,268 edges) and a small repo (141 files, 666 nodes, 1,288 edges).
+
+| Operation | synaptree-mcp | mid-size repo | small repo | Notes |
+| --- | --- | --- | --- | --- |
+| Full index (force) | 3.7 s | 10.2 s | 4.8 s | Re-parses every file and re-links |
+| Fast index (nothing changed) | 529 ms | 489 ms | 632 ms | sha256 diff only |
+| Cypher: count Functions | 10 ms | 7 ms | 9 ms | query_graph |
+| Name search (regex) | 151 ms | 410 ms | 157 ms | search_code, pattern "async\|await", limit 50 |
+| Dead-code detection | 21 ms | 9 ms | 13 ms | Functions with no incoming CALLS, limit 100 |
+| trace_path depth 5 | 34 ms | 36 ms | 28 ms | most-connected function, both directions, 200-row cap |
+
+Graph queries stay in the tens of milliseconds; the cost is in indexing, and re-indexing an unchanged repo is about half a second.
+
+## Querying: what each tool is for and how an LLM uses it
+
+| Tool | What it answers | How an LLM handles it |
+| --- | --- | --- |
+| `search_graph` | Where is symbol X defined? | Pass a name or pattern; reads a TSV of qualified names, kinds and files, then picks one |
+| `search_code` | Which files mention this text or concept? | Pass a regex; reads `file:line:text` lines instead of opening files |
+| `get_code_snippet` | What does this one function look like? | Pass a qualified name; receives only that symbol's lines |
+| `trace_path` | Who calls this, what does it call, what breaks if it changes? | Pass a qualified name, direction and depth; reads a flat edge list instead of following greps |
+| `query_graph` | Custom questions (dead code, hierarchy, counts) | Writes read-only Cypher using `$user_id` and `$repo_name`; reads TSV rows (500 max) |
+| `get_architecture` | What is in this repo? | One call returns label and edge counts and the top-level structure |
+| `get_graph_schema` | Which labels and edges can I query? | Called before writing Cypher so the query uses real names |
+| `detect_changes` | Is the index stale, and what changed? | Compares the stored commit sha; reads `clean` or `A/M/D` path lines |
+| `index_repository` | Index or refresh a repo | Pass the working directory as `root_path`; unchanged files are skipped |
+| `ask_flow` | Explain a flow in words | Optional; confirms the token cost first, then summarises the traced path |

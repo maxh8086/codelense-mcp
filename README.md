@@ -15,6 +15,71 @@ Retrieving code through the graph used 4,953 tokens against 52,140 for `git grep
 
 ![Total tokens: baseline vs synaptree](Benchmark/charts/hero.png)
 
+## Performance
+
+Latency over SSE against the Docker server, single warm run. Method and the script are in [docs/BENCHMARK.md](docs/BENCHMARK.md).
+
+```
+Operation                      synaptree-mcp   mid-size repo   small repo
+Full index (force)             3.7 s           10.2 s          4.8 s
+Fast index (nothing changed)   529 ms          489 ms          632 ms
+Cypher: count Functions        10 ms           7 ms            9 ms
+Name search (regex)            151 ms          410 ms          157 ms
+Dead-code detection            21 ms           9 ms            13 ms
+trace_path depth 5             34 ms           36 ms           28 ms
+Graph size (nodes / edges)     587 / 1,961     2,054 / 6,268   666 / 1,288
+```
+
+## Querying
+
+```
+Tool               Answers                                  How an LLM uses it
+search_graph       Where is symbol X defined?               Name or pattern in, TSV of qualified names out
+search_code        Which files mention this text?           Regex in, file:line:text lines out
+get_code_snippet   What does this function look like?       Qualified name in, only that symbol's lines out
+trace_path         Who calls this? What breaks if it moves? Qualified name, direction, depth in; flat edge list out
+query_graph        Dead code, hierarchy, counts             Read-only Cypher with $user_id and $repo_name; 500 rows max
+get_architecture   What is in this repo?                    One call: counts, layers, entrypoints, hotspots
+detect_changes     Is the index stale?                      Compares the stored commit sha; A/M/D path lines out
+```
+
+## Graph data model
+
+Every node carries the label `CodeNode` plus a kind label, and the tenant keys `user_id` and `repo_name`.
+Symbol names are stored as `qualified_name` (for example `src/tools.js::buildTools`).
+
+```
+Kinds   File, Folder, Function, Method, Class, Interface, Route, Type, Module, ...
+Edges   CONTAINS_FOLDER, CONTAINS_FILE, DEFINES, DEFINES_METHOD, MEMBER_OF, IMPORTS,
+        CALLS, CALL_REFERENCE, USAGE, IMPLEMENTS, INHERITS, USES_TYPE, HANDLES
+```
+
+`get_graph_schema` returns the exact labels and edges your graph contains. Example, functions nothing calls:
+
+```cypher
+MATCH (f:Function {user_id:$user_id, repo_name:$repo_name})
+WHERE NOT ()-[:CALLS]->(f) RETURN f.qualified_name LIMIT 100
+```
+
+## Configuration
+
+```
+Variable                       Default                  Purpose
+NEO4J_URI                      bolt://127.0.0.1:17687   Bolt endpoint
+NEO4J_USERNAME / PASSWORD      neo4j / (empty)          Database credentials (or NEO4J_AUTH=user/password)
+NEO4J_DATABASE                 server default           Database name
+PORT / HOST                    8787 / 127.0.0.1         HTTP bind (the Docker image binds 0.0.0.0)
+SYNAPTREE_TOKEN                (none)                   Require a bearer token on /sse, /api/v1
+SYNAPTREE_USER_ID              default                  Tenant id
+SYNAPTREE_DATA_DIR             ./data                   Settings, usage and saved connections
+SYNAPTREE_GRAMMARS_DIR         (none)                   Extra tree-sitter-<name>.wasm grammars
+SYNAPTREE_SUMMARIZE_ON_INDEX   off                      Local LLM writes summaries after indexing
+SYNAPTREE_SUMMARIZE_LIMIT      25                       Max symbols summarised per run
+EMBEDDINGS_URL / _API_KEY      (none)                   Optional embeddings endpoint
+EMBEDDINGS_MODEL               text-embedding-3-small   Embedding model name
+WORKSPACE_DIR (compose)        (set in .env)            Host folder mounted read-only at /workspace
+```
+
 ## What problem does it solve?
 
 AI coding agents work blind on large codebases. To answer "what breaks if I change `verifyJwt`?"
@@ -43,9 +108,13 @@ database schema (SQL and NoSQL), so the agent also knows which tables a piece of
 
 ## Architecture
 
-| High-level design | Low-level design |
-| --- | --- |
-| [![HLD](docs/hld.svg)](docs/hld.svg) | [![LLD](docs/lld.svg)](docs/lld.svg) |
+**High-level design**
+
+<img src="docs/hld.svg" alt="High-level design" width="100%">
+
+**Low-level design**
+
+<img src="docs/lld.svg" alt="Low-level design" width="100%">
 
 ### Screenshots
 
@@ -61,7 +130,7 @@ Live data from this repository's own index.
 
 Start the server and open <http://localhost:8787/ui/>. Light and dark themes are supported.
 
-- **Trace:** a Flow-Like style call graph (React + xyflow). Edges animate only for the selected
+- **Trace:** a call graph (React + xyflow). Edges animate only for the selected
   node, so the rest stays still. Depth 1-5, SVG (grouped layers) and CSV export, reset button.
 - **Architecture:** counts, languages, layers, entrypoints, hotspots and ADRs, plus a **Tokens saved**
   card (today's estimated saving, calls, with/without-graph bars and a by-tool table; demo data until an agent has made MCP calls).
@@ -117,8 +186,8 @@ codex mcp add synaptree -- node /path/to/synaptree-mcp/src/cli.js --stdio
 ```
 
 SSE clients connect to `http://127.0.0.1:8787/sse`. Set `SYNAPTREE_TOKEN` to require a bearer token.
-Every tool takes a `project` argument. If you route through TokenFrugal, index your checkout in
-synaptree under the same project name (the checkout folder slug) that its gateway injects.
+Every tool takes a `project` argument. If a gateway injects the project name for you, index your
+checkout under that same name (the checkout folder slug).
 
 ### Keep it in sync
 
@@ -147,6 +216,18 @@ synaptree-client path/to/synaptree-client.json
 Or build for your own OS with `npm run build:client` (output in `dist-client/`). musl distros such
 as Alpine are not covered; use the Node client there. Only the Windows binary has been verified by
 hand; the macOS and Linux ones are built and smoke-tested by CI.
+
+### Re-index on every commit
+
+`scripts/git-hooks/post-commit` and `post-merge` call `/api/v1/sync/auto` in the background, so the graph always matches HEAD. Enable once per clone:
+
+```bash
+git config core.hooksPath scripts/git-hooks
+```
+
+Set `SYNAPTREE_ROOT=/workspace/<repo>` when the server runs in Docker, and `SYNAPTREE_PROJECT`, `SYNAPTREE_URL`, `SYNAPTREE_TOKEN` as needed.
+
+**Agent swarms and worktrees.** The hook skips worktrees on purpose: each throwaway worktree would create an orphan project. Policy for LLM agents: the graph describes the main checkout (base branch, refreshed on every commit/merge there). Inside a worktree, use the graph for structure (`search_graph`, `trace_path`, `get_code_snippet`) and treat it as base-branch state; use `git diff` / `git grep` for your own uncommitted or branch-local changes. After a worktree branch merges, the post-merge hook in the main checkout re-indexes it.
 
 ## Tools
 
@@ -209,6 +290,21 @@ Languages without a bundled Tree-sitter grammar (for example R, SQL, GraphQL, Pr
 get lightweight pattern-based extraction instead of a full parse. Grammars run as WASM
 (`web-tree-sitter`), so there are no native bindings and nothing to compile.
 
+**Choosing `trace_path` parameters.** Callers / impact: `direction:"in"`, depth 1-3. True callees: `direction:"out"`, depth 1 (depth 2+ adds same-name noise). Test files are excluded unless `include_tests:true`.
+
+## Troubleshooting
+
+```
+Symptom                                        Cause and fix
+index_repository: "No local path known"        Pass root_path (absolute, as seen by the server; /workspace/<repo> in Docker)
+root_path is not a directory                   The path must exist inside the container; check WORKSPACE_DIR in .env
+Git Bash rewrites /workspace/... to C:/...     Set MSYS_NO_PATHCONV=1 or use PowerShell
+UI shows demo data                             Open /ui/ (with the trailing slash) and pick a project in the dropdown
+Graph looks stale after a commit               Run index_repository, or enable the git hooks above
+Tools return 401                               Send Authorization: Bearer <SYNAPTREE_TOKEN>
+Cannot connect to Neo4j                        docker compose up -d; Bolt is on 17687, not 7687
+```
+
 ## Tests
 
 ```bash
@@ -218,17 +314,3 @@ npm test      # node --test tests/unit/*.test.js
 ## License
 
 Apache License 2.0. See [LICENSE](LICENSE).
-
-#### Re-index on every commit
-
-`scripts/git-hooks/post-commit` and `post-merge` call `/api/v1/sync/auto` in the background, so the graph always matches HEAD. Enable once per clone:
-
-```bash
-git config core.hooksPath scripts/git-hooks
-```
-
-Set `SYNAPTREE_ROOT=/workspace/<repo>` when the server runs in Docker, and `SYNAPTREE_PROJECT`, `SYNAPTREE_URL`, `SYNAPTREE_TOKEN` as needed.
-
-**Agent swarms and worktrees.** The hook skips worktrees on purpose: each throwaway worktree would create an orphan project. Policy for LLM agents: the graph describes the main checkout (base branch, refreshed on every commit/merge there). Inside a worktree, use the graph for structure (`search_graph`, `trace_path`, `get_code_snippet`) and treat it as base-branch state; use `git diff` / `git grep` for your own uncommitted or branch-local changes. After a worktree branch merges, the post-merge hook in the main checkout re-indexes it.
-
-**Choosing `trace_path` parameters.** Callers / impact: `direction:"in"`, depth 1-3. True callees: `direction:"out"`, depth 1 (depth 2+ adds same-name noise). Test files are excluded unless `include_tests:true`.
