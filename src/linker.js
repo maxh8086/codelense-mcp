@@ -8,7 +8,7 @@ const TYPES = new Set(TYPE_KINDS);
 
 // Pass 1: turn one file's extraction into nodes plus structural edges.
 // Nodes carry a qualified_name of the form <project>.<path parts>.<symbol>; collisions get a ~line suffix.
-export function buildFile(project, filePath, extraction, { lang = '' } = {}) {
+export function buildFile(project, filePath, extraction, { lang = '', source = null, maxSource = 8192 } = {}) {
   const rel = posix(filePath);
   const parts = rel.split('/');
   const fileName = parts.pop();
@@ -46,6 +46,7 @@ export function buildFile(project, filePath, extraction, { lang = '' } = {}) {
     addNode({
       qualified_name: qn, label, name: s.name, file_path: rel, start_line: s.start, end_line: s.end,
       signature: (s.signature ?? '').slice(0, 300), docstring: (s.doc ?? '').slice(0, 500), language: lang,
+      source: typeof source === "string" ? source.split(String.fromCharCode(10)).slice(s.start - 1, s.end).join(String.fromCharCode(10)).slice(0, maxSource) : "",
     });
     if (parentSym) {
       edges.push({ type: label === 'Method' ? 'DEFINES_METHOD' : 'DEFINES', from: symQn[s.parent], to: qn });

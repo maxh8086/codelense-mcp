@@ -16,6 +16,7 @@ RUN apk add --no-cache unixodbc && npm ci --omit=dev
 COPY src/ ./src/
 COPY client/ ./client/
 COPY --from=ui /app/src/ui/dist ./src/ui/dist
+RUN mkdir -p /app/data && chown node:node /app/data
 VOLUME /app/data
 EXPOSE 8787
 USER node

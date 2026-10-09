@@ -27,6 +27,10 @@ export function loadConfig(env = process.env) {
       key: env.EMBEDDINGS_API_KEY || '',
       model: env.EMBEDDINGS_MODEL || 'text-embedding-3-small',
     },
+    summarizeOnIndex: {
+      enabled: /^(1|true|yes|on)$/i.test(env.SYNAPTREE_SUMMARIZE_ON_INDEX || ''),
+      limit: Number(env.SYNAPTREE_SUMMARIZE_LIMIT || 25),
+    },
     dataDir: env.SYNAPTREE_DATA_DIR || './data',
     grammarsDir: env.SYNAPTREE_GRAMMARS_DIR || undefined,
     workspaceRoot: env.SYNAPTREE_WORKSPACE_ROOT || process.cwd(),

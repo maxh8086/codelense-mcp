@@ -1,0 +1,16 @@
+{
+  "name": "synaptree",
+  "version": "1.0.0",
+  "description": "Code knowledge graph (Neo4j + Tree-sitter) exposed over MCP. Connects to the Dockerised synaptree-mcp server.",
+  "author": { "name": "maxh8086" },
+  "homepage": "https://github.com/maxh8086/synaptree-mcp",
+  "repository": "https://github.com/maxh8086/synaptree-mcp",
+  "license": "Apache-2.0",
+  "keywords": ["mcp", "code-graph", "neo4j", "tree-sitter"],
+  "mcpServers": {
+    "synaptree": {
+      "command": "docker",
+      "args": ["exec", "-i", "synaptree-synaptree-1", "node", "src/cli.js", "--stdio"]
+    }
+  }
+}
