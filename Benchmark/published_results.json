@@ -1,0 +1,102 @@
+{
+ "tokenizer": "o200k_base",
+ "run": "2026-10-09",
+ "tasks": [
+  {
+   "id": 1,
+   "task": "Find definition of linkRefs",
+   "baseline": 759,
+   "graph": 29
+  },
+  {
+   "id": 2,
+   "task": "Callers of indexRepository (depth 1)",
+   "baseline": 1003,
+   "graph": 32
+  },
+  {
+   "id": 3,
+   "task": "Impact of Db.replaceFile (depth 3)",
+   "baseline": 6250,
+   "graph": 119
+  },
+  {
+   "id": 4,
+   "task": "Fetch linkRefs source",
+   "baseline": 785,
+   "graph": 455
+  },
+  {
+   "id": 5,
+   "task": "Concept search \"savings\"",
+   "baseline": 2777,
+   "graph": 765
+  },
+  {
+   "id": 6,
+   "task": "List classes",
+   "baseline": 72,
+   "graph": 64
+  },
+  {
+   "id": 7,
+   "task": "Architecture overview",
+   "baseline": 10122,
+   "graph": 454
+  },
+  {
+   "id": 8,
+   "task": "What changed (clean tree)",
+   "baseline": 5,
+   "graph": 10
+  },
+  {
+   "id": 9,
+   "task": "Find definition of buildTools",
+   "baseline": 686,
+   "graph": 27
+  },
+  {
+   "id": 10,
+   "task": "Callers of walk (depth 2)",
+   "baseline": 5200,
+   "graph": 55
+  },
+  {
+   "id": 11,
+   "task": "Callees of indexRepository (depth 2)",
+   "baseline": 5237,
+   "graph": 604
+  },
+  {
+   "id": 12,
+   "task": "Fetch gitGrep source",
+   "baseline": 874,
+   "graph": 244
+  },
+  {
+   "id": 13,
+   "task": "Regex search export async function",
+   "baseline": 3348,
+   "graph": 356
+  },
+  {
+   "id": 14,
+   "task": "Search with no hits",
+   "baseline": 0,
+   "graph": 2
+  },
+  {
+   "id": 15,
+   "task": "List functions in compact.js",
+   "baseline": 164,
+   "graph": 66
+  },
+  {
+   "id": 16,
+   "task": "Concept search \"tenant\"",
+   "baseline": 14858,
+   "graph": 1671
+  }
+ ]
+}
