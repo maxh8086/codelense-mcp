@@ -80,6 +80,8 @@ EMBEDDINGS_MODEL               text-embedding-3-small   Embedding model name
 WORKSPACE_DIR (compose)        (set in .env)            Host folder mounted read-only at /workspace
 ```
 
+Local model for `SYNAPTREE_SUMMARIZE_ON_INDEX`: in a 36-answer screen of nine Ollama models, `llama3.2:3b-16k` scored 28/36 at 0.8 s/task, one answer behind `llama3.1:8b` (29/36, 6.1 s/task); models under 3B failed every summary task. See [docs/BENCHMARK.md](docs/BENCHMARK.md#local-model-for-summaries-and-review-thinker-role).
+
 ## What problem does it solve?
 
 AI coding agents work blind on large codebases. To answer "what breaks if I change `verifyJwt`?"
