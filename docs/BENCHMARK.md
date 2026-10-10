@@ -109,3 +109,37 @@ Graph queries stay in the tens of milliseconds; the cost is in indexing, and re-
 | `detect_changes` | Is the index stale, and what changed? | Compares the stored commit sha; reads `clean` or `A/M/D` path lines |
 | `index_repository` | Index or refresh a repo | Pass the working directory as `root_path`; unchanged files are skipped |
 | `ask_flow` | Explain a flow in words | Optional; confirms the token cost first, then summarises the traced path |
+
+## Local model for summaries and review (thinker role)
+
+Measured with [`Benchmark/model_probe.mjs`](../Benchmark/model_probe.mjs) against Ollama on an 8 GB laptop GPU, 2026-10-10: 12 checkable tasks x 3 runs per model (36 answers), temperature 0.1, 200-token cap (900 for the reasoning model, `<think>` stripped). Answers are scored by regular expression, so this is a coarse screen, not a quality ranking.
+
+```
+node Benchmark/model_probe.mjs --runs=3 llama3.2:1b qwen2.5:1.5b granite3.3:2b llama3.2:3b-16k phi4-mini qwen2.5:7b llama3.1:8b qwen2.5-coder:7b deepseek-r1:8b
+```
+
+```
+Model               Pass     s/task  tok/s  debug  review  json  summary  reason
+llama3.1:8b         29/36    6.1     10     12/12  8/9     6/6   3/6      0/3
+llama3.2:3b-16k     28/36    0.8     84     12/12  6/9     6/6   4/6      0/3
+qwen2.5:7b          26/36    1.2     32     9/12   5/9     6/6   3/6      3/3
+phi4-mini           25/36    2.6     22     12/12  4/9     6/6   3/6      0/3
+qwen2.5-coder:7b    24/36    1.1     31     12/12  0/9     6/6   6/6      0/3
+deepseek-r1:8b      24/36    55.3    9      9/12   9/9     2/6   3/6      1/3
+granite3.3:2b       22/36    0.9     60     12/12  1/9     6/6   0/6      3/3
+llama3.2:1b         21/36    0.4     117    12/12  3/9     6/6   0/6      0/3
+qwen2.5:1.5b        21/36    0.5     141    11/12  1/9     6/6   0/6      3/3
+```
+
+Reading it:
+
+- **Under 3B is not enough for review or summaries.** `llama3.2:1b`, `qwen2.5:1.5b` and `granite3.3:2b` pass debugging and JSON output but score 0/6 on summaries and at most 3/9 on review. They are fine for short fixed-format jobs only.
+- **`llama3.2:3b-16k` is the best value.** 28/36 at 0.8 s/task, one answer behind the best score (`llama3.1:8b`, 29/36) and about 8x faster. A one-answer gap over 36 is within run-to-run noise.
+- **`llama3.1:8b` is the accuracy pick** if latency does not matter (6 s/task, 10 tok/s): best on review (8/9).
+- **`deepseek-r1:8b` is a poor fit for this job**: 9/9 on review, but 55 s/task, and it failed 4 of 6 JSON answers.
+- **`qwen2.5-coder:7b`** was perfect on summaries but 0/9 on security review (it answered with rewritten code rather than naming the issue), so keep it as a builder, not a reviewer.
+- **Reasoning (0-3/3) is three answers of one tiny question**; do not read anything into it.
+
+Recommendation: keep `llama3.2:3b-16k` for `SYNAPTREE_SUMMARIZE_ON_INDEX` and review. Move to `llama3.1:8b` only for an occasional deep review where waiting is acceptable. No config change is required.
+
+Caveats: single machine, regex scoring, short prompts, one temperature. The 1B-class result is a lower bound, not a ceiling.
